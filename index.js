@@ -1,0 +1,94 @@
+
+/**
+ * Module dependencies.
+ */
+
+var uid = require('uid2')(6);
+var redis = require('redis').createClient;
+var msgpack = require('msgpack');
+var Adapter = require('socket.io-adapter');
+var debug = require('debug')('socket.io-redis');
+
+/**
+ * Module exports.
+ */
+
+module.exports = adapter;
+
+/**
+ * Returns a redis Adapter class.
+ *
+ * @return {RedisAdapter} adapter
+ * @api public
+ */
+
+function adapter(opts){
+
+  // opts
+  var host = opts.host || '127.0.0.1';
+  var port = Number(opts.port || 6379);
+  var pub = opts.pubClient;
+  var sub = opts.subClient;
+  var prefix = opts.key || 'socket.io';
+
+  // init clients if needed
+  if (!pub) pub = redis(port, host);
+  if (!sub) sub = redis(port, host);
+
+  // this server's key
+  var key = prefix + '#' + uid;
+
+  /**
+   * Adapter constructor.
+   *
+   * @param {String} namespace name
+   * @api public
+   */
+
+  function Redis(nsp){
+    Adapter.call(this, nsp);
+
+    var self = this;
+    sub.subscribe(prefix + '#*', function(err){
+      if (err) self.emit('error', err);
+    });
+    sub.on('message', this.onmessage.bind(this));
+  }
+
+  /**
+   * Inherits from `Adapter`.
+   */
+
+  Redis.prototype.__proto__ = Adapter.prototype;
+
+  /**
+   * Called with a subscription message
+   *
+   * @api private
+   */
+
+  Redis.prototype.onmessage = function(channel, msg){
+    var pieces = channel.split('#');
+    if (uid == pieces.pop()) return debug('ignore same uid');
+    var args = msgpack.unpack(msg);
+    args.push(true);
+    this.broadcast.apply(this, args);
+  };
+
+  /**
+   * Broadcasts a packet.
+   *
+   * @param {Object} packet to emit
+   * @param {Object} options
+   * @param {Boolean} whether the packet came from another node
+   * @api public
+   */
+
+  Redis.prototype.broadcast = function(packet, opts, remote){
+    Adapter.prototype.broadcast.call(packet, opts);
+    if (!remote) pub.publish(key, msgpack.pack([packet, opts]));
+  };
+
+  return Redis;
+
+}
