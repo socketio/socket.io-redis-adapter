@@ -3,7 +3,7 @@
 
 ## How to use
 
-```
+```js
 var io = require('socket.io')(3000);
 io.adapter(require('socket.io-redis')({ host: 'localhost', port: 6379 ));
 ```
