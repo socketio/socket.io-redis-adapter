@@ -49,7 +49,7 @@ function adapter(opts){
     Adapter.call(this, nsp);
 
     var self = this;
-    sub.subscribe(prefix + '#*', function(err){
+    sub.psubscribe(prefix + '#*', function(err){
       if (err) self.emit('error', err);
     });
     sub.on('message', this.onmessage.bind(this));
