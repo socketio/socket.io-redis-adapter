@@ -18,11 +18,26 @@ module.exports = adapter;
 /**
  * Returns a redis Adapter class.
  *
+ * @param {String} optional, redis uri
  * @return {RedisAdapter} adapter
  * @api public
  */
 
-function adapter(opts){
+function adapter(uri, opts){
+  opts = opts || {};
+
+  // handle options only
+  if ('object' == typeof uri) {
+    opts = uri;
+    uri = null;
+  }
+
+  // handle uri string
+  if (uri) {
+    uri = uri.split(':');
+    opts.host = uri[0];
+    opts.port = uri[1];
+  }
 
   // opts
   var host = opts.host || '127.0.0.1';

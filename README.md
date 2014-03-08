@@ -19,6 +19,11 @@ process, you should use
 
 ## API
 
+### adapter(uri[, opts])
+
+`uri` is a string like `localhost:6379` where your redis server
+is located. For a list of options see below.
+
 ### adapter(opts)
 
 The following options are allowed:
