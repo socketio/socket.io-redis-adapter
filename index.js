@@ -5,7 +5,7 @@
 
 var uid = require('uid2')(6);
 var redis = require('redis').createClient;
-var msgpack = require('msgpack');
+var msgpack = require('msgpack-js');
 var Adapter = require('socket.io-adapter');
 var debug = require('debug')('socket.io-redis');
 
@@ -85,7 +85,7 @@ function adapter(uri, opts){
   Redis.prototype.onmessage = function(pattern, channel, msg){
     var pieces = channel.split('#');
     if (uid == pieces.pop()) return debug('ignore same uid');
-    var args = msgpack.unpack(msg);
+    var args = msgpack.decode(msg);
     args.push(true);
     this.broadcast.apply(this, args);
   };
@@ -101,7 +101,7 @@ function adapter(uri, opts){
 
   Redis.prototype.broadcast = function(packet, opts, remote){
     Adapter.prototype.broadcast.call(this, packet, opts);
-    if (!remote) pub.publish(key, msgpack.pack([packet, opts]));
+    if (!remote) pub.publish(key, msgpack.encode([packet, opts]));
   };
 
   return Redis;
