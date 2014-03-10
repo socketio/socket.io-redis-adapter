@@ -48,7 +48,7 @@ function adapter(uri, opts){
 
   // init clients if needed
   if (!pub) pub = redis(port, host);
-  if (!sub) sub = redis(port, host);
+  if (!sub) sub = redis(port, host, {detect_buffers: true});
 
   // this server's key
   var key = prefix + '#' + uid;
@@ -67,7 +67,7 @@ function adapter(uri, opts){
     sub.psubscribe(prefix + '#*', function(err){
       if (err) self.emit('error', err);
     });
-    sub.on('message', this.onmessage.bind(this));
+    sub.on('pmessage', this.onmessage.bind(this));
   }
 
   /**
@@ -82,7 +82,7 @@ function adapter(uri, opts){
    * @api private
    */
 
-  Redis.prototype.onmessage = function(channel, msg){
+  Redis.prototype.onmessage = function(pattern, channel, msg){
     var pieces = channel.split('#');
     if (uid == pieces.pop()) return debug('ignore same uid');
     var args = msgpack.unpack(msg);
