@@ -1,6 +1,6 @@
 {
   "name": "socket.io-redis",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "",
   "dependencies": {
     "debug": "0.7.4",
