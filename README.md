@@ -1,6 +1,9 @@
 
 # socket.io-redis
 
+[![Build Status](https://secure.travis-ci.org/LearnBoost/socket.io-redis.png)](http://travis-ci.org/LearnBoost/socket.io-redis)
+[![NPM version](https://badge.fury.io/js/socket.io-redis.png)](http://badge.fury.io/js/socket.io-redis)
+
 ## How to use
 
 ```js
