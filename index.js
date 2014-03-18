@@ -3,7 +3,7 @@
  * Module dependencies.
  */
 
-var uid = require('uid2')(6);
+var uid2 = require('uid2');
 var redis = require('redis').createClient;
 var msgpack = require('msgpack-js');
 var Adapter = require('socket.io-adapter');
@@ -51,6 +51,7 @@ function adapter(uri, opts){
   if (!sub) sub = redis(port, host, {detect_buffers: true});
 
   // this server's key
+  var uid = uid2(6);
   var key = prefix + '#' + uid;
 
   /**
@@ -86,6 +87,7 @@ function adapter(uri, opts){
     var pieces = channel.split('#');
     if (uid == pieces.pop()) return debug('ignore same uid');
     var args = msgpack.decode(msg);
+    if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace')
     args.push(true);
     this.broadcast.apply(this, args);
   };
