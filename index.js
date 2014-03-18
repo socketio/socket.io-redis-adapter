@@ -40,6 +40,7 @@ function adapter(uri, opts){
   }
 
   // opts
+  var socket = opts.socket;
   var host = opts.host || '127.0.0.1';
   var port = Number(opts.port || 6379);
   var pub = opts.pubClient;
@@ -47,8 +48,11 @@ function adapter(uri, opts){
   var prefix = opts.key || 'socket.io';
 
   // init clients if needed
-  if (!pub) pub = redis(port, host);
-  if (!sub) sub = redis(port, host, {detect_buffers: true});
+  if (!pub) pub = socket ? redis(socket) : redis(port, host);
+  if (!sub) sub = socket
+    ? redis(socket, { detect_buffers: true })
+    : redis(port, host, {detect_buffers: true});
+
 
   // this server's key
   var uid = uid2(6);
