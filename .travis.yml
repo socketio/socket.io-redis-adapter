@@ -11,4 +11,5 @@ matrix:
 notifications:
   irc: "irc.freenode.org#socket.io"
 
-services: redis-server
+services:
+  - redis-server
