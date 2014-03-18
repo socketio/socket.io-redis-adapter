@@ -1,7 +1,7 @@
 
 # socket.io-redis
 
-[![Build Status](https://secure.travis-ci.org/LearnBoost/socket.io-redis.png)](http://travis-ci.org/LearnBoost/socket.io-redis)
+[![Build Status](https://secure.travis-ci.org/Automattic/socket.io-redis.png)](http://travis-ci.org/Automattic/socket.io-redis)
 [![NPM version](https://badge.fury.io/js/socket.io-redis.png)](http://badge.fury.io/js/socket.io-redis)
 
 ## How to use
@@ -17,8 +17,7 @@ multiple socket.io instances in different processes or servers that can
 all broadcast and emit events to and from each other.
 
 If you need to emit events to socket.io instances from a non-socket.io
-process, you should use
-[socket.io-emit](http:///github.com/learnboost/socket.io-emit).
+process, you should use [socket.io-emitter](http:///github.com/Automattic/socket.io-emitter).
 
 ## API
 
