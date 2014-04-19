@@ -91,7 +91,8 @@ function adapter(uri, opts){
     var pieces = channel.split('#');
     if (uid == pieces.pop()) return debug('ignore same uid');
     var args = msgpack.decode(msg);
-    if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace')
+    if (!args[0] || (this.nsp.name != '/' && args[0].nsp != this.nsp.name))
+      return debug('ignore different namespace')
     args.push(true);
     this.broadcast.apply(this, args);
   };
