@@ -1,4 +1,3 @@
-
 # socket.io-redis
 
 [![Build Status](https://secure.travis-ci.org/Automattic/socket.io-redis.png)](http://travis-ci.org/Automattic/socket.io-redis)
@@ -9,7 +8,7 @@
 ```js
 var io = require('socket.io')(3000);
 var redis = require('socket.io-redis');
-io.adapter(redis({ host: 'localhost', port: 6379 ));
+io.adapter(redis({ host: 'localhost', port: 6379 }));
 ```
 
 By running socket.io with the `socket.io-redis` adapter you can run
