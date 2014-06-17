@@ -104,6 +104,7 @@ function adapter(uri, opts){
     this.broadcast.apply(this, args);
   };
 
+
   /**
    * Adds a socket from a room.
    *
@@ -114,15 +115,18 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.add = function(id, room, fn){
-    Adapter.prototype.add.call(this, id, room, fn);
+    Adapter.prototype.add.call(this, id, room);
     // this.sids[id] = this.sids[id] || {};
     // this.sids[id][room] = true;
     // this.rooms[room] = this.rooms[room] || [];
     // this.rooms[room][id] = true;
-    data.sadd(room, id, fn);
-    data.sadd(id, room, fn);
+    data.multi()
+      .sadd(room, id)
+      .sadd(id, room)
+      .exec(function(){
+        if (fn) process.nextTick(fn.bind(null, null));
+      });
 
-    // if (fn) process.nextTick(fn.bind(null, null));
   };
 
   /**
@@ -135,11 +139,13 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.del = function(id, room, fn){
-    Adapter.prototype.del.call(this, room, fn);
+    Adapter.prototype.del.call(this, room);
     data.multi()
       .srem(room, id)
       .srem(id, room)
-      .exec(fn);
+      .exec(function(){
+        if (fn) process.nextTick(fn.bind(null, null));
+      });
   };
 
 
@@ -151,7 +157,7 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.delAll = function(id, fn){
-    Adapter.prototype.delAll.call(this, id, fn);
+    Adapter.prototype.delAll.call(this, id);
 
     data.smembers(id, function(err, replies){
       var multi = data.multi();
@@ -162,7 +168,7 @@ function adapter(uri, opts){
       multi.exec(fn);
     });
   };
-
+  
   /**
    * Get all clients in room.
    *
