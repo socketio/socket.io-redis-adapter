@@ -60,8 +60,6 @@ function adapter(uri, opts){
   var uid = uid2(6);
   var key = prefix + '#' + uid;
 
-  var self;
-
   /**
    * Adapter constructor.
    *
@@ -72,7 +70,7 @@ function adapter(uri, opts){
   function Redis(nsp){
     Adapter.call(this, nsp);
 
-    self = this;
+    var self = this;
     sub.psubscribe(prefix + '#*', function(err){
       if (err) self.emit('error', err);
     });
@@ -103,7 +101,6 @@ function adapter(uri, opts){
     args.push(true);
     this.broadcast.apply(this, args);
   };
-
 
   /**
    * Adds a socket from a room.
@@ -179,6 +176,7 @@ function adapter(uri, opts){
     data.smembers(room, fn);
   };
 
+
   /**
    * Broadcasts a packet.
    *
@@ -192,34 +190,6 @@ function adapter(uri, opts){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) pub.publish(key, msgpack.encode([packet, opts]));
   };
-
-  // Set up exit handlers so we can clean up this process's redis data before exiting
-
-  process.stdin.resume(); //so the program will not close instantly
-  function exitHandler(options, err){
-    var i;
-    var multi = data.multi();
-    var execDone = false;
-
-    var roomIds = Object.keys(self.rooms);
-    var socketIds = Object.keys(self.sids);
-
-    for(i=0; i<roomIds.length; ++i){
-      multi.srem(roomIds[i], Object.keys(self.rooms[roomIds[i]]));
-    }
-    for(i=0; i<socketIds.length; ++i){
-      multi.srem(socketIds[i], Object.keys(self.sids[socketIds[i]]));
-    }
-    multi.exec(function(err, replies){
-      process.exit();
-    });
-  }
-
-  // //do something when app is closing
-  // process.on('exit', exitHandler.bind(null,{cleanup:true}));
-  process.on('SIGTERM', exitHandler);
-  process.on('SIGINT', exitHandler);
-  process.on('uncaughtException', exitHandler);
 
   return Redis;
 
