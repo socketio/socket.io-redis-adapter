@@ -82,7 +82,7 @@ function adapter(uri, opts){
    * Inherits from `Adapter`.
    */
 
-  Redis.prototype.__proto__ = Adapter.prototype;
+  Redis.prototype = Object.create(Adapter.prototype);
 
   /**
    * Called with a subscription message
@@ -96,9 +96,9 @@ function adapter(uri, opts){
     var args = msgpack.decode(msg);
 
     if (args[0] && args[0].nsp === undefined)
-      args[0].nsp = '/'
+      args[0].nsp = '/';
 
-    if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace')
+    if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace');
     args.push(true);
     this.broadcast.apply(this, args);
   };
@@ -114,13 +114,9 @@ function adapter(uri, opts){
 
   Redis.prototype.add = function(id, room, fn){
     Adapter.prototype.add.call(this, id, room);
-    // this.sids[id] = this.sids[id] || {};
-    // this.sids[id][room] = true;
-    // this.rooms[room] = this.rooms[room] || [];
-    // this.rooms[room][id] = true;
     data.multi()
-      .sadd(room, id)
-      .sadd(id, room)
+      .sadd(prefix + '#' + room, id)
+      .sadd(prefix + '#' + id, room)
       .exec(function(){
         if (fn) process.nextTick(fn.bind(null, null));
       });
@@ -139,8 +135,8 @@ function adapter(uri, opts){
   Redis.prototype.del = function(id, room, fn){
     Adapter.prototype.del.call(this, room);
     data.multi()
-      .srem(room, id)
-      .srem(id, room)
+      .srem(prefix + '#' + room, id)
+      .srem(prefix + '#' + id, room)
       .exec(function(){
         if (fn) process.nextTick(fn.bind(null, null));
       });
@@ -157,12 +153,12 @@ function adapter(uri, opts){
   Redis.prototype.delAll = function(id, fn){
     Adapter.prototype.delAll.call(this, id);
 
-    data.smembers(id, function(err, replies){
+    data.smembers(id, function(err, rooms){
       var multi = data.multi();
-      for(var i=0; i<replies.length; ++i){
-        multi.srem(replies[i], id);
+      for(var i=0; i<rooms.length; ++i){
+        multi.srem(prefix + '#' + rooms[i], id);
       }
-      multi.del(id);
+      multi.del(prefix + '#' + id);
       multi.exec(fn);
     });
   };
@@ -174,7 +170,7 @@ function adapter(uri, opts){
    * @api public
    */
   Redis.prototype.clients = function(room, fn){
-    data.smembers(room, fn);
+    data.smembers(prefix + '#' + room, fn);
   };
 
 
@@ -204,10 +200,10 @@ function adapter(uri, opts){
     var roomIds = Object.keys(self.rooms);
     var socketIds = Object.keys(self.sids);
     for(i=0; i<roomIds.length; ++i){
-      multi.srem(roomIds[i], Object.keys(self.rooms[roomIds[i]]));
+      multi.srem(prefix + '#' + roomIds[i], Object.keys(self.rooms[roomIds[i]]));
     }
     for(i=0; i<socketIds.length; ++i){
-      multi.srem(socketIds[i], Object.keys(self.sids[socketIds[i]]));
+      multi.srem(prefix + '#' + socketIds[i], Object.keys(self.sids[socketIds[i]]));
     }
     multi.exec(function(err, replies){
       process.exit();

@@ -14,11 +14,11 @@
     "uid2": "0.0.3",
     "redis": "0.10.1",
     "msgpack-js": "0.3.0",
-    "socket.io-adapter": "git+ssh://git@github.com:FREEZX/socket.io-adapter.git"
+    "socket.io-adapter": "FREEZX/socket.io-adapter"
   },
   "devDependencies": {
-    "socket.io": "git+ssh://git@github.com:FREEZX/socket.io.git",
-    "socket.io-client": "git+ssh://git@github.com:Automattic/socket.io-client.git",
+    "socket.io": "FREEZX/socket.io",
+    "socket.io-client": "Automattic/socket.io-client",
     "mocha": "1.18.0",
     "expect.js": "0.3.1",
     "async": "0.2.10"
