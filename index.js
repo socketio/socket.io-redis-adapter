@@ -45,6 +45,7 @@ function adapter(uri, opts){
   var port = Number(opts.port || 6379);
   var pub = opts.pubClient;
   var sub = opts.subClient;
+  var auth = opts.auth;
   var prefix = opts.key || 'socket.io';
 
   // init clients if needed
@@ -52,7 +53,11 @@ function adapter(uri, opts){
   if (!sub) sub = socket
     ? redis(socket, { detect_buffers: true })
     : redis(port, host, {detect_buffers: true});
-
+  //If redis is protected by passphrase then send the auth command. Passphrase can be set in options as {auth: passphrase}
+  if (auth){
+    pub.auth(auth, function (err) { if (err) throw err; });
+    sub.auth(auth, function (err) { if (err) throw err; });
+  }
 
   // this server's key
   var uid = uid2(6);
