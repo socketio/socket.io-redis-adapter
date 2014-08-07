@@ -153,7 +153,7 @@ function adapter(uri, opts){
   Redis.prototype.delAll = function(id, fn){
     Adapter.prototype.delAll.call(this, id);
 
-    data.smembers(id, function(err, rooms){
+    data.smembers(prefix + '#' +  id, function(err, rooms){
       var multi = data.multi();
       for(var i=0; i<rooms.length; ++i){
         multi.srem(prefix + '#' + rooms[i], id);
