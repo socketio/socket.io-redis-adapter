@@ -45,6 +45,7 @@ function adapter(uri, opts){
   var port = Number(opts.port || 6379);
   var pub = opts.pubClient;
   var sub = opts.subClient;
+  var data = opts.dataClient;
   var prefix = opts.key || 'socket.io';
 
   // init clients if needed
@@ -52,6 +53,7 @@ function adapter(uri, opts){
   if (!sub) sub = socket
     ? redis(socket, { detect_buffers: true })
     : redis(port, host, {detect_buffers: true});
+  if (!data) data = socket ? redis(socket) : redis(port, host);
 
 
   // this server's key
@@ -65,10 +67,11 @@ function adapter(uri, opts){
    * @api public
    */
 
-  function Redis(nsp){
-    Adapter.call(this, nsp);
+  var self = this;
 
-    var self = this;
+  function Redis(nsp){
+    self = this;
+    Adapter.call(this, nsp);
     sub.psubscribe(prefix + '#*', function(err){
       if (err) self.emit('error', err);
     });
@@ -79,7 +82,7 @@ function adapter(uri, opts){
    * Inherits from `Adapter`.
    */
 
-  Redis.prototype.__proto__ = Adapter.prototype;
+  Redis.prototype = Object.create(Adapter.prototype);
 
   /**
    * Called with a subscription message
@@ -93,12 +96,83 @@ function adapter(uri, opts){
     var args = msgpack.decode(msg);
 
     if (args[0] && args[0].nsp === undefined)
-      args[0].nsp = '/'
+      args[0].nsp = '/';
 
-    if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace')
+    if (!args[0] || args[0].nsp != this.nsp.name) return debug('ignore different namespace');
     args.push(true);
     this.broadcast.apply(this, args);
   };
+
+  /**
+   * Adds a socket from a room.
+   *
+   * @param {String} socket id
+   * @param {String} room name
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.add = function(id, room, fn){
+    Adapter.prototype.add.call(this, id, room);
+    data.multi()
+      .sadd(prefix + '#' + room, id)
+      .sadd(prefix + '#' + id, room)
+      .exec(function(){
+        if (fn) process.nextTick(fn.bind(null, null));
+      });
+
+  };
+
+  /**
+   * Removes a socket from a room.
+   *
+   * @param {String} socket id
+   * @param {String} room name
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.del = function(id, room, fn){
+    Adapter.prototype.del.call(this, id, room);
+    data.multi()
+      .srem(prefix + '#' + room, id)
+      .srem(prefix + '#' + id, room)
+      .exec(function(){
+        if (fn) process.nextTick(fn.bind(null, null));
+      });
+  };
+
+
+  /**
+   * Removes a socket from all rooms it's joined.
+   *
+   * @param {String} socket id
+   * @api public
+   */
+
+  Redis.prototype.delAll = function(id, fn){
+    Adapter.prototype.delAll.call(this, id);
+
+    data.smembers(prefix + '#' +  id, function(err, rooms){
+      var multi = data.multi();
+      for(var i=0; i<rooms.length; ++i){
+        multi.srem(prefix + '#' + rooms[i], id);
+      }
+      multi.del(prefix + '#' + id);
+      multi.exec(fn);
+    });
+  };
+  
+  /**
+   * Get all clients in room.
+   *
+   * @param {String} room id
+   * @api public
+   */
+  Redis.prototype.clients = function(room, fn){
+    data.smembers(prefix + '#' + room, fn);
+  };
+
 
   /**
    * Broadcasts a packet.
@@ -113,6 +187,36 @@ function adapter(uri, opts){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) pub.publish(key, msgpack.encode([packet, opts]));
   };
+
+
+  // Set up exit handlers so we can clean up this process's redis data before exiting
+
+  process.stdin.resume(); //so the program will not close instantly
+  function exitHandler(options, err){
+    var i;
+    var multi = data.multi();
+    var execDone = false;
+
+    var roomIds = Object.keys(self.rooms);
+    var socketIds = Object.keys(self.sids);
+    for(i=0; i<roomIds.length; ++i){
+      multi.srem(prefix + '#' + roomIds[i], Object.keys(self.rooms[roomIds[i]]));
+    }
+    for(i=0; i<socketIds.length; ++i){
+      multi.srem(prefix + '#' + socketIds[i], Object.keys(self.sids[socketIds[i]]));
+    }
+    multi.exec(function(err, replies){
+      process.exit();
+    });
+  }
+ 
+  // //do something when app is closing
+  // process.on('exit', exitHandler.bind(null,{cleanup:true}));
+  process.on('SIGTERM', exitHandler);
+  process.on('SIGINT', exitHandler);
+  process.on('SIGQUIT', exitHandler);
+  process.on('uncaughtException', exitHandler);
+ 
 
   return Redis;
 
