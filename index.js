@@ -133,7 +133,7 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.del = function(id, room, fn){
-    Adapter.prototype.del.call(this, room);
+    Adapter.prototype.del.call(this, id, room);
     data.multi()
       .srem(prefix + '#' + room, id)
       .srem(prefix + '#' + id, room)
