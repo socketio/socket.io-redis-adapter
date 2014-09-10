@@ -36,13 +36,17 @@ Redis queries) on exit.
 
 ## Stored schema
 
-For each new socket connected to a node the following HSET is created: 
+Every new keys in Redis are created with "socket.io" prefix (customizable with the *key* option).
 
-...
+For each new socket connected to a node a SET is created with the key: socket.io#{{socket uid}}. On creation the set contain only a record, the socket uid String.
 
-For each new room joined by a user to a node the following HSET is created:
+For each new room created by socket.io (generally when a user enter in) a SET is created with the key: socket.io#{{room id}}
 
-...
+Then each time a socket join a room the room id string is added to user Redis SET **and** socket uid is added to room Redis SET.
+Also when a socket leave a room the corresponding record (socket uid) is removed from the room Redis SET and the room id is removed from socket SET.
+
+On disconnect corresponding user socket SET is automatically removed and corresponding record also removed from rooms SET.
+Room SET are removed automatically when no more socket remain inside.
 
 ## API
 
