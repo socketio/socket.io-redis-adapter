@@ -15,8 +15,34 @@ By running socket.io with the `socket.io-redis` adapter you can run
 multiple socket.io instances in different processes or servers that can
 all broadcast and emit events to and from each other.
 
+`socket.io-redis` use Redis pub/sub mechanism to route events to different nodes/servers and
+store rooms and sockets ids in Redis sets.
+
 If you need to emit events to socket.io instances from a non-socket.io
 process, you should use [socket.io-emitter](http:///github.com/Automattic/socket.io-emitter).
+
+## Known limitation
+
+**Warning! Current module implementation doesn't cleanup Redis storage on exit.**
+
+Consequence is that in a multi-node/server configuration with the out-of-the-box module, 
+shutting down a node process will let sockets and rooms data remain in Redis even if the
+current sockets are now probably not longer connected.
+
+The reason of this limitation is the non ability for node to execute asynchronous tasks (like 
+Redis queries) on exit.
+
+**It is strongely adviced to implement your proper cleanup on exit or to take this point in consideration in your implementation**.
+
+## Stored schema
+
+For each new socket connected to a node the following HSET is created: 
+
+...
+
+For each new room joined by a user to a node the following HSET is created:
+
+...
 
 ## API
 
@@ -36,8 +62,10 @@ The following options are allowed:
   be used instead of the host and port options if specified.
 - `pubClient`: optional, the redis client to publish events on
 - `subClient`: optional, the redis client to subscribe to events on
+- `dataClient`: optional, the redis client used to store and read socket.io 
+  sockets/rooms data
 
-If you decide to supply `pubClient` and `subClient`, make sure you use
+If you decide to supply `pubClient`, `subClient` or `dataClient` make sure you use
 [node_redis](https://github.com/mranney/node_redis) as a client or one
 with an equivalent API.
 
