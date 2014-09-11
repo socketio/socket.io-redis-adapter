@@ -44,6 +44,20 @@ with an equivalent API.
 If you supply clients, make sure you initialized them with 
 the `return_buffers` option set to `true`.
 
+
+##### Adapter with password
+
+If you need to create a redisAdapter to a redis instance that has a password, use pub/sub options.
+
+Example:
+
+```
+var pub = redis.createClient(port, host, {auth_pass:"PASSWORD"});
+var sub = redis.createClient(port, host, {detect_buffers: true, auth_pass:"PASSWORD"} );
+
+io.adapter( redisAdapter({pubClient: pub, subClient: sub}) );
+```
+
 ## License
 
 MIT
