@@ -23,15 +23,19 @@ process, you should use [socket.io-emitter](http:///github.com/Automattic/socket
 
 ## Stored schema
 
-The module store two different entity in Redis: **socket** and **room**.
+The module store two different entities in Redis: **socket** and **room**.
+
+Each as a Redis SET.
+
 Every key is prefixed with "socket.io". Prefix is customizable with the *key* option.
 
 ### socket
 
-The module create a new Redis SET for each new socket.
+The module creates a new Redis SET for each new socket.
 
-The socket SET key is defined as __PREFIX__#__SOCKET_ID__ (e.g.: *socket.io#951wMmbBjkREmCapAAAD*).
-The socket SET is created with only one record: the socket ID string.
+The socket SET key is defined as *{{PREFIX}}*#*{{SOCKET_ID}}* (e.g.: *socket.io#951wMmbBjkREmCapAAAD*).
+
+The socket SET is created with one record: the socket ID string.
 
 Then each time this socket join/leave a room module add/remove a Redis record in SET.
 
@@ -48,7 +52,7 @@ socket.io#951wMmbBjkREmCapAAAD
 
 Each time a room is needed (= a socket join a room that not already exists) the module create a new Redis SET.
 
-The room SET key is defined as __PREFIX__#__ROOM_NAME__ (e.g.: *socket.io#foo*).
+The room SET key is defined as *{{PREFIX}}*#*{{ROOM_NAME }}* (e.g.: *socket.io#foo*).
 The room SET contain the socket IDs of the room sockets.
 
 Then each time a socket join/leave the room the module add/remove the corresponding Redis record from the SET.
