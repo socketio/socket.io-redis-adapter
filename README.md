@@ -21,32 +21,62 @@ store rooms and sockets ids in Redis sets.
 If you need to emit events to socket.io instances from a non-socket.io
 process, you should use [socket.io-emitter](http:///github.com/Automattic/socket.io-emitter).
 
+## Stored schema
+
+The module store two different entity in Redis: **socket** and **room**.
+Every key is prefixed with "socket.io". Prefix is customizable with the *key* option.
+
+### socket
+
+The module create a new Redis SET for each new socket.
+
+The socket SET key is defined as __PREFIX__#__SOCKET_ID__ (e.g.: *socket.io#951wMmbBjkREmCapAAAD*).
+The socket SET is created with only one record: the socket ID string.
+
+Then each time this socket join/leave a room module add/remove a Redis record in SET.
+
+Example for a socket with the ID *951wMmbBjkREmCapAAAD* in *foo* and *bar* rooms:
+
+```
+socket.io#951wMmbBjkREmCapAAAD
+  -> 951wMmbBjkREmCapAAAD
+  -> foo
+  -> bar
+```
+
+### room
+
+Each time a room is needed (= a socket join a room that not already exists) the module create a new Redis SET.
+
+The room SET key is defined as __PREFIX__#__ROOM_NAME__ (e.g.: *socket.io#foo*).
+The room SET contain the socket IDs of the room sockets.
+
+Then each time a socket join/leave the room the module add/remove the corresponding Redis record from the SET.
+
+Example for a room *foo* with the following socket in *951wMmbBjkREmCapAAAD*, *566Mm_BjkREmRff456*:
+
+```
+socket.io#foo
+  -> 951wMmbBjkREmCapAAAD
+  -> 566Mm_BjkREmRff456
+```
+
+As with native adapter the not longer needed room SET are deleted automatically (except on application
+exit, see below).
+
 ## Known limitation
 
 **Warning! Current module implementation doesn't cleanup Redis storage on exit.**
 
-Consequence is that in a multi-node/server configuration with the out-of-the-box module, 
-shutting down a node process will let sockets and rooms data remain in Redis even if the
-current sockets are now probably not longer connected.
+Consequence is that in a multi-node/server configuration with the out-of-the-box module,
+shutting down a node process will let sockets and rooms SET remain in Redis even if the
+current sockets are not longer connected.
 
-The reason of this limitation is the non ability for node to execute asynchronous tasks (like 
-Redis queries) on exit.
+The reason is the non ability for node to execute asynchronous tasks (like Redis queries)
+on exit.
 
-**It is strongely adviced to implement your proper cleanup on exit or to take this point in consideration in your implementation**.
-
-## Stored schema
-
-Every new keys in Redis are created with "socket.io" prefix (customizable with the *key* option).
-
-For each new socket connected to a node a SET is created with the key: socket.io#{{socket uid}}. On creation the set contain only a record, the socket uid String.
-
-For each new room created by socket.io (generally when a user enter in) a SET is created with the key: socket.io#{{room id}}
-
-Then each time a socket join a room the room id string is added to user Redis SET **and** socket uid is added to room Redis SET.
-Also when a socket leave a room the corresponding record (socket uid) is removed from the room Redis SET and the room id is removed from socket SET.
-
-On disconnect corresponding user socket SET is automatically removed and corresponding record also removed from rooms SET.
-Room SET are removed automatically when no more socket remain inside.
+So, every developer should implement his proper cleanup logic in the context of
+his particular project.
 
 ## API
 
