@@ -115,8 +115,8 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.broadcast = function(packet, opts, remote){
-    Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) pub.publish(key, msgpack.encode([packet, opts]));
+    Adapter.prototype.broadcast.call(this, packet, opts);
   };
 
   return Redis;
