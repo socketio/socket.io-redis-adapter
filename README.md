@@ -47,11 +47,16 @@ the `return_buffers` option set to `true`.
 
 ##### Adapter with password
 
-If you need to create a redisAdapter to a redis instance that has a password, use pub/sub options.
+If you need to create a redisAdapter to a redis instance that has a password, use pub/sub options with existing Redis *clients.
+*Use `redis.createClient()`
 
 Example:
 
-```
+```js
+var io = require('socket.io')(3000);
+var redisAdapter = require('socket.io-redis'); # Note this is the adapter
+var redis = require('redis');
+
 var pub = redis.createClient(port, host, {auth_pass:"PASSWORD"});
 var sub = redis.createClient(port, host, {detect_buffers: true, auth_pass:"PASSWORD"} );
 
