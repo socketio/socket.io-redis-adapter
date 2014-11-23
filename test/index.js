@@ -215,5 +215,18 @@ describe('socket.io-redis', function(){
         done();
       });
     });
+    
+    it('should get all rooms the clients are in', function(done){
+      var self = this;
+      self.sio.sockets.clients('room', function(err, clients){
+        expect(clients).to.be.an('array');
+        async.each(clients, function(client, next) {
+          self.sio.sockets.roomClients(client, function(err, rooms) {
+            expect(rooms).to.be.an('array');
+            next();
+          });  
+        }, done);
+      });
+    });
   });
 });
