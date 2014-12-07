@@ -54,6 +54,15 @@ function adapter(uri, opts){
     ? redis(socket, { detect_buffers: true })
     : redis(port, host, {detect_buffers: true});
 
+  if (opts.pass) {
+    pub.auth(opts.pass, function(err){
+      if (err) throw err;
+    });
+
+    sub.auth(opts.pass, function(err){
+      if (err) throw err;
+    });
+  }
 
   // this server's key
   var uid = uid2(6);
