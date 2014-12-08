@@ -169,7 +169,7 @@ describe('socket.io-redis', function(){
       }, function (err) {
         var pub = self.redisClients[0];
         pub.pubsub('numsub', 'socket.io#/nsp#room#', function (err, subscriptions) {
-          expect(subscriptions[1]).to.be('0');
+          expect(parseInt(subscriptions[1])).to.be(0);
           done(err);
         });
       });
@@ -187,7 +187,7 @@ describe('socket.io-redis', function(){
             var pub = self.redisClients[0];
 
             pub.pubsub('numsub', 'socket.io#/nsp#room#', function (err, subscriptions) {
-              expect(subscriptions[1]).to.be('0');
+              expect(parseInt(subscriptions[1])).to.be(0);
               done(err);
             });
           }, 20);
