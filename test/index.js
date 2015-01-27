@@ -21,84 +21,86 @@ function client(srv, nsp, opts){
 }
 
 describe('socket.io-redis', function(){
-  describe('broadcast', function(){
-    beforeEach(function(done){
-      this.redisClients = [];
-      var self = this;
+  beforeEach(function(done){
+    this.redisClients = [];
+    this.sios = [];
+    var self = this;
 
-      async.times(2, function(n, next){
-        var pub = redis.createClient();
-        var sub = redis.createClient(null, null, {detect_buffers: true});
-        var srv = http();
-        var sio = io(srv, {adapter: redisAdapter({pubClient: pub, subClient: sub})});
-        self.redisClients.push(pub, sub);
+    async.times(2, function(n, next){
+      var pub = redis.createClient();
+      var sub = redis.createClient(null, null, {detect_buffers: true});
+      var srv = http();
+      var sio = io(srv, {adapter: redisAdapter({pubClient: pub, subClient: sub})});
+      self.redisClients.push(pub, sub);
+      self.sios.push(sio);
 
-        srv.listen(function(){
-          ['/', '/nsp'].forEach(function(name){
-            sio.of(name).on('connection', function(socket){
-              socket.on('join', function(callback){
-                socket.join('room', callback);
-              });
+      srv.listen(function(){
+        ['/', '/nsp'].forEach(function(name){
+          sio.of(name).on('connection', function(socket){
+            socket.on('join', function(callback){
+              socket.join('room', callback);
+            });
 
-              socket.on('socket broadcast', function(data){
-                socket.broadcast.to('room').emit('broadcast', data);
-              });
+            socket.on('socket broadcast', function(data){
+              socket.broadcast.to('room').emit('broadcast', data);
+            });
 
-              socket.on('namespace broadcast', function(data){
-                sio.of('/nsp').in('room').emit('broadcast', data);
-              });
+            socket.on('namespace broadcast', function(data){
+              sio.of('/nsp').in('room').emit('broadcast', data);
             });
           });
+        });
 
-          async.parallel([
-            function(callback){
-              async.times(2, function(n, next){
-                var socket = client(srv, '/nsp', {forceNew: true});
-                socket.on('connect', function(){
-                  socket.emit('join', function(){
-                    next(null, socket);
-                  });
-                });
-              }, callback);
-            },
-            function(callback){
-              // a socket of the same namespace but not joined in the room.
+        async.parallel([
+          function(callback){
+            async.times(2, function(n, next){
               var socket = client(srv, '/nsp', {forceNew: true});
               socket.on('connect', function(){
-                socket.on('broadcast', function(){
-                  throw new Error('Called unexpectedly: different room');
+                socket.emit('join', function(){
+                  next(null, socket);
                 });
+              });
+            }, callback);
+          },
+          function(callback){
+            // a socket of the same namespace but not joined in the room.
+            var socket = client(srv, '/nsp', {forceNew: true});
+            socket.on('connect', function(){
+              socket.on('broadcast', function(){
+                throw new Error('Called unexpectedly: different room');
+              });
+              callback();
+            });
+          },
+          function(callback){
+            // a socket joined in a room but for a different namespace.
+            var socket = client(srv, {forceNew: true});
+            socket.on('connect', function(){
+              socket.on('broadcast', function(){
+                throw new Error('Called unexpectedly: different namespace');
+              });
+              socket.emit('join', function(){
                 callback();
               });
-            },
-            function(callback){
-              // a socket joined in a room but for a different namespace.
-              var socket = client(srv, {forceNew: true});
-              socket.on('connect', function(){
-                socket.on('broadcast', function(){
-                  throw new Error('Called unexpectedly: different namespace');
-                });
-                socket.emit('join', function(){
-                  callback();
-                });
-              });
-            }
-          ], function(err, results){
-            next(err, results[0]);
-          });
+            });
+          }
+        ], function(err, results){
+          next(err, results[0]);
         });
-      }, function(err, sockets){
-        self.sockets = sockets.reduce(function(a, b){ return a.concat(b); });
-        done(err);
       });
+    }, function(err, sockets){
+      self.sockets = sockets.reduce(function(a, b){ return a.concat(b); });
+      done(err);
     });
+  });
 
-    afterEach(function(){
-      this.redisClients.forEach(function(client){
-        client.quit();
-      });
+  afterEach(function(){
+    this.redisClients.forEach(function(client){
+      client.quit();
     });
+  });
 
+  describe('broadcast', function(){
     it('should broadcast from a socket', function(done){
       async.each(this.sockets.slice(1), function(socket, next){
         socket.on('broadcast', function(message){
@@ -123,6 +125,20 @@ describe('socket.io-redis', function(){
       }, done);
 
       this.sockets[0].emit('namespace broadcast', 'hi');
+    });
+  });
+
+  describe('clients', function(){
+    it('should get a list of client sids', function(done){
+      var allSids = this.sockets.map(function(socket){
+        return socket.id;
+      });
+      async.each(this.sios, function(sio, next){
+        sio.of('/nsp').in('room').clients(function(err, sids) {
+          expect(sids.sort()).to.eql(allSids.sort());
+          next();
+        })
+      }, done);
     });
   });
 });
