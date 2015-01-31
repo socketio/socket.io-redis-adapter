@@ -96,9 +96,9 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onbroadcastmessage = function(pattern, channel, msg){
-    if (!channel.match(/#broadcast$/)) return;
     var pieces = channel.split('#');
-    if (uid == pieces[1]) return debug('ignore same uid');
+    if ('broadcast' !== pieces.pop()) return;
+    if (uid === pieces.pop()) return debug('ignore same uid');
 
     var args = msgpack.decode(msg);
 
@@ -174,9 +174,9 @@ function adapter(uri, opts){
           sub.on('pmessage', onclientresponsemessage);
 
           function onclientresponsemessage(pattern, channel, message) {
-            if (!channel.match(/#clientresponse$/)) return;
             var pieces = channel.split('#');
-            if (muid != pieces[1]) return debug('ignore different client request');
+            if ('clientresponse' !== pieces.pop()) return;
+            if (muid !== pieces.pop()) return debug('ignore different client request');
             var response = msgpack.decode(message);
             sids.push.apply(sids, response[0]);
             --remaining || finish();
