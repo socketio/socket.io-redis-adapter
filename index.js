@@ -176,7 +176,7 @@ function adapter(uri, opts){
           function onclientresponsemessage(pattern, channel, message) {
             var pieces = channel.split('#');
             if ('clientresponse' !== pieces.pop()) return;
-            if (muid !== pieces.pop()) return debug('ignore different client request');
+            if (muid !== pieces.pop()) return debug('ignore different client response');
             var response = msgpack.decode(message);
             sids.push.apply(sids, response[0]);
             --remaining || finish();
