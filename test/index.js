@@ -141,4 +141,41 @@ describe('socket.io-redis', function(){
       }, done);
     });
   });
+
+  describe('intercom', function(){
+
+    beforeEach(function(){
+      var sockets = [];
+      this.sios.forEach(function(sio){
+        sockets.push.apply(sockets, sio.of('/nsp').sockets);
+      });
+      this.socketsInRoom = sockets.filter(function(socket) {
+        return ~socket.rooms.indexOf('room');
+      });
+    });
+
+    it('should intercom from a socket', function(done){
+      async.each(this.socketsInRoom.slice(1), function(socket, next){
+        socket.on('broadcast', function(message){
+          expect(message).to.equal('hi');
+          next();
+        });
+      }, done);
+      var socket = this.socketsInRoom[0];
+      socket.on('broadcast', function(){
+        throw new Error('Called unexpectedly: same socket');
+      });
+      socket.intercom.to('room').emit('broadcast', 'hi');
+    });
+
+    it('should intercom from a namespace', function(done){
+      async.each(this.socketsInRoom, function(socket, next){
+        socket.on('broadcast', function(message){
+          expect(message).to.equal('hi');
+          next();
+        });
+      }, done);
+      this.sios[0].of('/nsp').in('room').intercom('broadcast', 'hi');
+    });
+  });
 });

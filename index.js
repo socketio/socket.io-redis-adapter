@@ -79,7 +79,7 @@ function adapter(uri, opts){
     sub.psubscribe(prefix + '#*', function(err){
       if (err) self.emit('error', err);
     });
-    sub.on('pmessage', this.onbroadcastmessage.bind(this));
+    sub.on('pmessage', this.onmessage.bind(this));
 
   }
 
@@ -95,24 +95,39 @@ function adapter(uri, opts){
    * @api private
    */
 
-  Redis.prototype.onbroadcastmessage = function(pattern, channel, msg){
+  Redis.prototype.onmessage = function(pattern, channel, msg){
     var pieces = channel.split('#');
-    if ('broadcast' !== pieces.pop()) return;
+    var type = pieces.pop();
     if (uid === pieces.pop()) return debug('ignore same uid');
-
     var args = msgpack.decode(msg);
 
-    if (args[0] && args[0].nsp === undefined) {
-      args[0].nsp = '/';
+    switch (type) {
+
+      case 'broadcast':
+
+        if (args[0] && args[0].nsp === undefined) {
+          args[0].nsp = '/';
+        }
+
+        if (!args[0] || args[0].nsp != this.nsp.name) {
+          return debug('ignore different namespace');
+        }
+
+        args.push(true);
+
+        this.broadcast.apply(this, args);
+
+        break;
+
+      case 'intercom':
+
+        args.push(true);
+
+        this.intercom.apply(this, args);
+
+        break;
     }
 
-    if (!args[0] || args[0].nsp != this.nsp.name) {
-      return debug('ignore different namespace');
-    }
-
-    args.push(true);
-
-    this.broadcast.apply(this, args);
   };
 
   /**
@@ -190,6 +205,20 @@ function adapter(uri, opts){
         });
       }
     });
+  };
+
+  /**
+   * Intercoms a packet.
+   *
+   * @param {Array} arguments to intercom
+   * @param {Object} options
+   * @param {Boolean} whether the packet came from another node
+   * @api public
+   */
+
+  Redis.prototype.intercom = function(args, opts, remote){
+    Adapter.prototype.intercom.call(this, args, opts);
+    if (!remote) pub.publish(key + '#intercom', msgpack.encode([args, opts]));
   };
 
   return Redis;
