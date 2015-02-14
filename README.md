@@ -52,8 +52,16 @@ that a regular `Adapter` does not
 - `pubClient`
 - `subClient`
 
-Example:
+## Client error handling
 
+Access the `pubClient` and `subClient` properties of the
+Redis Adapter instance to subscribe to its `error` event:
+
+```js
+var redis = require('socket.io-redis');
+var adapter = adapter('localhost:6379');
+adapter.pubClient.on('error', function(){});
+adapter.subClient.on('error', function(){});
 ```
 var pub = redis.createClient(port, host, {auth_pass:"PASSWORD"});
 var sub = redis.createClient(port, host, {detect_buffers: true, auth_pass:"PASSWORD"} );
