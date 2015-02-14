@@ -66,8 +66,12 @@ function adapter(uri, opts){
   function Redis(nsp){
     Adapter.call(this, nsp);
 
-    var self = this;
+    this.uid = uid;
+    this.prefix = prefix;
+    this.pubClient = pub;
+    this.subClient = sub;
 
+    var self = this;
     sub.subscribe(prefix + '#' + nsp.name + '#', function(err){
       if (err) self.emit('error', err);
     });

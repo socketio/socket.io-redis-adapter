@@ -42,10 +42,15 @@ with an equivalent API.
 If you supply clients, make sure you initialized them with 
 the `return_buffers` option set to `true`.
 
+### RedisAdapter
 
-##### Adapter with password
+The redis adapter instances expose the following properties
+that a regular `Adapter` does not
 
-If you need to create a redisAdapter to a redis instance that has a password, use pub/sub options.
+- `uid`
+- `prefix`
+- `pubClient`
+- `subClient`
 
 Example:
 
