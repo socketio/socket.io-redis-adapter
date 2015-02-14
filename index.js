@@ -174,10 +174,9 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.del = function(id, room, fn){
+    debug('removing %s from %s', id, room);
+
     var self = this;
-
-    debug('removing ', id, ' from ', room);
-
     this.sids[id] = this.sids[id] || {};
     this.rooms[room] = this.rooms[room] || {};
     delete this.sids[id][room];
