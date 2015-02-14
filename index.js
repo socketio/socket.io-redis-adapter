@@ -137,20 +137,30 @@ function adapter(uri, opts){
     }
   };
 
+  /**
+   * Subscribe client to room messages.
+   *
+   * @param {String} client id
+   * @param {String} room
+   * @param {Function} callback (optional)
+   * @api public
+   */
+
   Redis.prototype.add = function(id, room, fn){
+    debug('adding %s to %s ', id, room);
     var self = this;
-
-    debug('adding ', id, ' to ', room);
-
     this.sids[id] = this.sids[id] || {};
     this.sids[id][room] = true;
     this.rooms[room] = this.rooms[room] || {};
     this.rooms[room][id] = true;
-
-    sub.subscribe(prefix + '#' + this.nsp.name + '#' + room + '#', function(err){
-      if (err) self.emit('error', err);
-
-      if (fn) process.nextTick(fn.bind(null, null));
+    var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+    sub.subscribe(channel, function(err){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+      if (fn) fn(null);
     });
   };
 
