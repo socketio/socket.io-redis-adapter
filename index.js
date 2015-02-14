@@ -227,9 +227,9 @@ function adapter(uri, opts){
           if (err) return self.emit('error', err);
           next();
         });
+      } else {
+        process.nextTick(next);
       }
-
-      next();
     }, function(err){
       if (err) {
         self.emit('error', err);
