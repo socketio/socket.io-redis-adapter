@@ -132,7 +132,7 @@ function adapter(uri, opts){
         });
       } else {
         var packet = msgpack.encode([uid, packet, opts]);
-        pub.publish(prefix + '#' + packet.nsp + '#');
+        pub.publish(prefix + '#' + packet.nsp + '#', packet);
       }
     }
   };
