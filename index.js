@@ -218,20 +218,22 @@ function adapter(uri, opts){
 
       if (self.rooms.hasOwnProperty(room) && !Object.keys(self.rooms[room]).length) {
         delete self.rooms[room];
-
-        return sub.unsubscribe(prefix + '#' + self.nsp.name + '#' + room + '#', function(err){
-          if (err) self.emit('error', err);
+        var channel = prefix + '#' + self.nsp.name + '#' + room + '#';
+        return sub.unsubscribe(channel, function(err){
+          if (err) return self.emit('error', err);
           next();
         });
       }
 
       next();
-    }, function(err) {
-      if (err) self.emit('error', err);
-
+    }, function(err){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
       delete self.sids[id];
-
-      if (fn) process.nextTick(fn.bind(null, null));
+      if (fn) fn(null);
     });
   };
 
