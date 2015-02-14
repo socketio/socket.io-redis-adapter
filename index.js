@@ -91,9 +91,9 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onmessage = function(channel, msg){
-    var pieces = channel.split('#'),
-        args = msgpack.decode(msg),
-        packet;
+    var pieces = channel.split('#');
+    var args = msgpack.decode(msg);
+    var packet;
 
     if (uid == args.shift()) return debug('ignore same uid');
 
@@ -126,12 +126,15 @@ function adapter(uri, opts){
     if (!remote) {
       if (opts.rooms) {
         opts.rooms.forEach(function(room) {
-          pub.publish(prefix + '#' + packet.nsp + '#' + room + '#', msgpack.encode([uid, packet, opts]));
+          var packet = msgpack.encode([uid, packet, opts]);
+          var channel = prefix + '#' + packet.nsp + '#' + room + '#';
+          pub.publish(channel, packet);
         });
       } else {
-        pub.publish(prefix + '#' + packet.nsp + '#', msgpack.encode([uid, packet, opts]));
-      };
-    };
+        var packet = msgpack.encode([uid, packet, opts]);
+        pub.publish(prefix + '#' + packet.nsp + '#');
+      }
+    }
   };
 
   Redis.prototype.add = function(id, room, fn){
