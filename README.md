@@ -63,11 +63,22 @@ var adapter = adapter('localhost:6379');
 adapter.pubClient.on('error', function(){});
 adapter.subClient.on('error', function(){});
 ```
-var pub = redis.createClient(port, host, {auth_pass:"PASSWORD"});
-var sub = redis.createClient(port, host, {detect_buffers: true, auth_pass:"PASSWORD"} );
 
-io.adapter( redisAdapter({pubClient: pub, subClient: sub}) );
+## Custom client (eg: with authentication)
+
+If you need to create a redisAdapter to a redis instance
+that has a password, use pub/sub options instead of passing
+a connection string.
+
+```js
+var redis = require('redis').createClient;
+var adapter = require('socket.io-redis');
+var pub = redis(port, host, { auth_pass: "pwd" });
+var sub = redis(port, host, { detect_buffers: true, auth_pass: "pwd" });
+io.adapter(adapter({ pubClient: pub, subClient: sub }));
 ```
+
+Make sure the `detect_buffers` option is set to `true` for the sub client.
 
 ## License
 
