@@ -9,6 +9,7 @@ var msgpack = require('msgpack-js');
 var Adapter = require('socket.io-adapter');
 var Emitter = require('events').EventEmitter;
 var debug = require('debug')('socket.io-redis');
+var async = require('async');
 
 /**
  * Module exports.
@@ -70,10 +71,11 @@ function adapter(uri, opts){
     Adapter.call(this, nsp);
 
     var self = this;
-    sub.psubscribe(prefix + '#*', function(err){
+
+    sub.subscribe(prefix + '#' + nsp.name + '#', function(err){
       if (err) self.emit('error', err);
     });
-    sub.on('pmessage', this.onmessage.bind(this));
+    sub.on('message', this.onmessage.bind(this));
   }
 
   /**
@@ -88,16 +90,20 @@ function adapter(uri, opts){
    * @api private
    */
 
-  Redis.prototype.onmessage = function(pattern, channel, msg){
-    var pieces = channel.split('#');
-    if (uid == pieces.pop()) return debug('ignore same uid');
-    var args = msgpack.decode(msg);
+  Redis.prototype.onmessage = function(channel, msg){
+    var pieces = channel.split('#'),
+        args = msgpack.decode(msg),
+        packet;
 
-    if (args[0] && args[0].nsp === undefined) {
-      args[0].nsp = '/';
+    if (uid == args.shift()) return debug('ignore same uid');
+
+    packet = args[0];
+
+    if (packet && packet.nsp === undefined) {
+      packet.nsp = '/';
     }
 
-    if (!args[0] || args[0].nsp != this.nsp.name) {
+    if (!packet || packet.nsp != this.nsp.name) {
       return debug('ignore different namespace');
     }
 
@@ -117,7 +123,87 @@ function adapter(uri, opts){
 
   Redis.prototype.broadcast = function(packet, opts, remote){
     Adapter.prototype.broadcast.call(this, packet, opts);
-    if (!remote) pub.publish(key, msgpack.encode([packet, opts]));
+    if (!remote) {
+      if (opts.rooms) {
+        opts.rooms.forEach(function(room) {
+          pub.publish(prefix + '#' + packet.nsp + '#' + room + '#', msgpack.encode([uid, packet, opts]));
+        });
+      } else {
+        pub.publish(prefix + '#' + packet.nsp + '#', msgpack.encode([uid, packet, opts]));
+      };
+    };
+  };
+
+  Redis.prototype.add = function(id, room, fn){
+    var self = this;
+
+    debug('adding ', id, ' to ', room);
+
+    this.sids[id] = this.sids[id] || {};
+    this.sids[id][room] = true;
+    this.rooms[room] = this.rooms[room] || {};
+    this.rooms[room][id] = true;
+
+    sub.subscribe(prefix + '#' + this.nsp.name + '#' + room + '#', function(err){
+      if (err) self.emit('error', err);
+
+      if (fn) process.nextTick(fn.bind(null, null));
+    });
+  };
+
+  Redis.prototype.del = function(id, room, fn){
+    var self = this;
+
+    debug('removing ', id, ' from ', room);
+
+    this.sids[id] = this.sids[id] || {};
+    this.rooms[room] = this.rooms[room] || {};
+    delete this.sids[id][room];
+    delete this.rooms[room][id];
+
+    if (this.rooms.hasOwnProperty(room) && !Object.keys(this.rooms[room]).length) {
+      delete this.rooms[room];
+
+      return sub.unsubscribe(prefix + '#' + this.nsp.name + '#' + room + '#', function(err){
+        if (err) self.emit('error', err);
+
+        if (fn) process.nextTick(fn.bind(null, null));
+      });
+    }
+
+    if (fn) process.nextTick(fn.bind(null, null));
+  };
+
+  Redis.prototype.delAll = function(id, fn){
+    var self = this,
+        rooms = this.sids[id];
+
+    debug('removing ', id, ' from all rooms');
+
+    if (!rooms) return process.nextTick(fn.bind(null, null));
+
+    async.forEach(Object.keys(rooms), function (room, next) {
+      if (rooms.hasOwnProperty(room)) {
+        delete self.rooms[room][id];
+      }
+
+      if (self.rooms.hasOwnProperty(room) && !Object.keys(self.rooms[room]).length) {
+        delete self.rooms[room];
+
+        return sub.unsubscribe(prefix + '#' + self.nsp.name + '#' + room + '#', function(err){
+          if (err) self.emit('error', err);
+          next();
+        });
+      }
+
+      next();
+    }, function(err) {
+      if (err) self.emit('error', err);
+
+      delete self.sids[id];
+
+      if (fn) process.nextTick(fn.bind(null, null));
+    });
   };
 
   return Redis;

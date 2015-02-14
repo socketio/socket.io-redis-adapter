@@ -40,12 +40,20 @@ describe('socket.io-redis', function(){
                 socket.join('room', callback);
               });
 
+              socket.on('leave', function(callback){
+                socket.leave('room', callback);
+              });
+
               socket.on('socket broadcast', function(data){
                 socket.broadcast.to('room').emit('broadcast', data);
               });
 
               socket.on('namespace broadcast', function(data){
                 sio.of('/nsp').in('room').emit('broadcast', data);
+              });
+
+              socket.on('request', function(data){
+                socket.emit('reply', data);
               });
             });
           });
@@ -123,6 +131,68 @@ describe('socket.io-redis', function(){
       }, done);
 
       this.sockets[0].emit('namespace broadcast', 'hi');
+    });
+
+    it('should reply to one client', function(done){
+      this.sockets.slice(1).forEach(function(socket){
+        socket.on('reply', function(message){
+          throw new Error('Called unexpectedly: other socket');
+        });
+      });
+
+      this.sockets[0].on('reply', function(message){
+        expect(message).to.equal('hi');
+        done();
+      });
+      this.sockets[0].emit('request', 'hi');
+    });
+
+    it('should not send message for clients left the room', function(done){
+      var self = this;
+
+      async.each(this.sockets, function(socket, next){
+        socket.on('broadcast', function(message){
+          throw new Error('Called unexpectedly: client already left the room');
+        });
+        socket.emit('leave', next);
+      }, function (err) {
+        self.sockets[0].emit('namespace broadcast', 'hi');
+        done();
+      });
+    });
+
+    it('should unsubscribe from the channel if there are no more room members', function(done){
+      var self = this;
+
+      async.each(this.sockets, function(socket, next){
+        socket.emit('leave', next);
+      }, function (err) {
+        var pub = self.redisClients[0];
+        pub.pubsub('numsub', 'socket.io#/nsp#room#', function (err, subscriptions) {
+          expect(parseInt(subscriptions[1])).to.be(0);
+          done(err);
+        });
+      });
+    });
+
+    it('should unsubscribe from the channel if clients have disconnected', function(done){
+      var self = this;
+
+      setTimeout(function () {
+        async.each(self.sockets, function(socket, next){
+          socket.once('disconnect', next);
+          socket.disconnect();
+        }, function (err) {
+          setTimeout(function () {
+            var pub = self.redisClients[0];
+
+            pub.pubsub('numsub', 'socket.io#/nsp#room#', function (err, subscriptions) {
+              expect(parseInt(subscriptions[1])).to.be(0);
+              done(err);
+            });
+          }, 20);
+        });
+      }, 20);
     });
   });
 });
