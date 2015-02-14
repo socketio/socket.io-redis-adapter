@@ -126,13 +126,14 @@ function adapter(uri, opts){
     if (!remote) {
       if (opts.rooms) {
         opts.rooms.forEach(function(room) {
-          var packet = msgpack.encode([uid, packet, opts]);
-          var channel = prefix + '#' + packet.nsp + '#' + room + '#';
-          pub.publish(channel, packet);
+          var chn = prefix + '#' + packet.nsp + '#' + room + '#';
+          var msg = msgpack.encode([uid, packet, opts]);
+          pub.publish(chn, msg);
         });
       } else {
-        var packet = msgpack.encode([uid, packet, opts]);
-        pub.publish(prefix + '#' + packet.nsp + '#', packet);
+        var chn = prefix + '#' + packet.nsp + '#';
+        var msg = msgpack.encode([uid, packet, opts]);
+        pub.publish(chn, msg);
       }
     }
   };
