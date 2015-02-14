@@ -204,14 +204,14 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.delAll = function(id, fn){
-    var self = this,
-        rooms = this.sids[id];
+    debug('removing %s from all rooms', id);
 
-    debug('removing ', id, ' from all rooms');
+    var self = this;
+    var rooms = this.sids[id];
 
     if (!rooms) return process.nextTick(fn.bind(null, null));
 
-    async.forEach(Object.keys(rooms), function (room, next) {
+    async.forEach(Object.keys(rooms), function(room, next){
       if (rooms.hasOwnProperty(room)) {
         delete self.rooms[room][id];
       }
