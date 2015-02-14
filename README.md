@@ -32,8 +32,6 @@ The following options are allowed:
 - `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
 - `host`: host to connect to redis on (`localhost`)
 - `port`: port to connect to redis on (`6379`)
-- `socket`: unix domain socket to connect to redis (`"/tmp/redis.sock"`). Will
-  be used instead of the host and port options if specified.
 - `pubClient`: optional, the redis client to publish events on
 - `subClient`: optional, the redis client to subscribe to events on
 
