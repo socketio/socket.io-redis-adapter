@@ -188,8 +188,7 @@ function adapter(uri, opts){
       var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
       return sub.unsubscribe(channel, function(err){
         if (err) self.emit('error', err);
-
-        if (fn) process.nextTick(fn.bind(null, null));
+        if (fn) fn(err);
       });
     }
 
