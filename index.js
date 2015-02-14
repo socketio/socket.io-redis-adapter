@@ -195,6 +195,14 @@ function adapter(uri, opts){
     }
   };
 
+  /**
+   * Unsubscribe client completely.
+   *
+   * @param {String} client id
+   * @param {Function} callback (optional)
+   * @api public
+   */
+
   Redis.prototype.delAll = function(id, fn){
     var self = this,
         rooms = this.sids[id];
