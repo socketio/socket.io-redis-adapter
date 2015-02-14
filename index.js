@@ -190,9 +190,9 @@ function adapter(uri, opts){
         if (err) self.emit('error', err);
         if (fn) fn(err);
       });
+    } else {
+      if (fn) process.nextTick(fn.bind(null, null));
     }
-
-    if (fn) process.nextTick(fn.bind(null, null));
   };
 
   Redis.prototype.delAll = function(id, fn){
