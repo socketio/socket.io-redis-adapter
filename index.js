@@ -185,8 +185,8 @@ function adapter(uri, opts){
 
     if (this.rooms.hasOwnProperty(room) && !Object.keys(this.rooms[room]).length) {
       delete this.rooms[room];
-
-      return sub.unsubscribe(prefix + '#' + this.nsp.name + '#' + room + '#', function(err){
+      var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+      return sub.unsubscribe(channel, function(err){
         if (err) self.emit('error', err);
 
         if (fn) process.nextTick(fn.bind(null, null));
