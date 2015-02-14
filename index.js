@@ -164,6 +164,15 @@ function adapter(uri, opts){
     });
   };
 
+  /**
+   * Unsubscribe client from room messages.
+   *
+   * @param {String} session id
+   * @param {String} room id
+   * @param {Function} callback (optional)
+   * @api public
+   */
+
   Redis.prototype.del = function(id, room, fn){
     var self = this;
 
