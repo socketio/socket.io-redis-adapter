@@ -54,7 +54,6 @@ function adapter(uri, opts){
 
   // this server's key
   var uid = uid2(6);
-  var key = prefix + '#' + uid;
 
   /**
    * Adapter constructor.
