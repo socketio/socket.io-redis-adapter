@@ -240,6 +240,11 @@ function adapter(uri, opts){
     });
   };
 
+  Redis.uid = uid;
+  Redis.pubClient = pub;
+  Redis.subClient = sub;
+  Redis.prefix = prefix;
+
   return Redis;
 
 }
