@@ -90,7 +90,6 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onmessage = function(channel, msg){
-    var pieces = channel.split('#');
     var args = msgpack.decode(msg);
     var packet;
 
