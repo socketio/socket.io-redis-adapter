@@ -59,7 +59,7 @@ Redis Adapter instance to subscribe to its `error` event:
 
 ```js
 var redis = require('socket.io-redis');
-var adapter = adapter('localhost:6379');
+var adapter = redis('localhost:6379');
 adapter.pubClient.on('error', function(){});
 adapter.subClient.on('error', function(){});
 ```
