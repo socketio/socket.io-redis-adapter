@@ -275,7 +275,7 @@ function adapter(uri, opts){
       return;
     }
 
-    async.forEach(Object.keys(rooms), function(room, next){
+    async.each(Object.keys(rooms), function(room, next){
       self.del(id, room, next);
     }, function(err){
       if (err) {
