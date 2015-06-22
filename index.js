@@ -213,7 +213,7 @@ function adapter(uri, opts){
 
     if (!rooms) return process.nextTick(fn.bind(null, null));
 
-    async.forEach(Object.keys(rooms), function(room, next){
+    async.each(Object.keys(rooms), function(room, next){
       if (rooms.hasOwnProperty(room)) {
         delete self.rooms[room][id];
       }

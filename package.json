@@ -10,7 +10,7 @@
     "test": "mocha"
   },
   "dependencies": {
-    "async": "0.9.0",
+    "async": "1.2.1",
     "debug": "0.7.4",
     "msgpack-js": "0.3.0",
     "redis": "0.10.1",
