@@ -126,7 +126,7 @@ function adapter(uri, opts){
       var msg = msgpack.encode([uid, packet, opts]);
       if (opts.rooms) {
         opts.rooms.forEach(function(room) {
-          var chnRoom = chn + '#' + room + '#';
+          var chnRoom = chn + room + '#';
           pub.publish(chnRoom, msg);
         });
       } else {
