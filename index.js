@@ -123,11 +123,16 @@ function adapter(uri, opts){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) {
       if (opts.rooms) {
-        opts.rooms.forEach(function(room) {
-          var chn = prefix + '#' + packet.nsp + '#' + room + '#';
-          var msg = msgpack.encode([uid, packet, opts]);
-          pub.publish(chn, msg);
-        });
+          for(var k in opts.rooms){
+            var room = opts.rooms[k];
+            if(typeof(room) == "object"){
+              room = room.id;
+              opts.rooms[k] = room;
+            }
+            var chn = prefix + '#' + packet.nsp + '#' + room + '#';
+            var msg = msgpack.encode([uid, packet, opts]);
+            pub.publish(chn, msg);
+        }
       } else {
         var chn = prefix + '#' + packet.nsp + '#';
         var msg = msgpack.encode([uid, packet, opts]);
