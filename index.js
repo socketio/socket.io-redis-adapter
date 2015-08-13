@@ -128,9 +128,11 @@ function adapter(uri, opts){
               opts.rooms[k] = opts.rooms[k].id;
             }
           }
-          var chn = prefix + '#' + packet.nsp + '#' + room + '#';
-          var msg = msgpack.encode([uid, packet, opts]);
-          pub.publish(chn, msg);
+          opts.rooms.forEach(function(room) {
+            var chn = prefix + '#' + packet.nsp + '#' + room + '#';
+            var msg = msgpack.encode([uid, packet, opts]);
+            pub.publish(chn, msg);
+          });
       } else {
         var chn = prefix + '#' + packet.nsp + '#';
         var msg = msgpack.encode([uid, packet, opts]);
