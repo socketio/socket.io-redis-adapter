@@ -125,7 +125,7 @@ function adapter(uri, opts){
       if (opts.rooms) {
           for(var k in opts.rooms){
             if(typeof(opts.rooms[k]) == "object"){
-              opts.rooms[k] = room.id;
+              opts.rooms[k] = opts.rooms[k].id;
             }
           }
           var chn = prefix + '#' + packet.nsp + '#' + room + '#';
