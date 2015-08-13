@@ -124,15 +124,13 @@ function adapter(uri, opts){
     if (!remote) {
       if (opts.rooms) {
           for(var k in opts.rooms){
-            var room = opts.rooms[k];
-            if(typeof(room) == "object"){
-              room = room.id;
-              opts.rooms[k] = room;
+            if(typeof(opts.rooms[k]) == "object"){
+              opts.rooms[k] = room.id;
             }
-            var chn = prefix + '#' + packet.nsp + '#' + room + '#';
-            var msg = msgpack.encode([uid, packet, opts]);
-            pub.publish(chn, msg);
-        }
+          }
+          var chn = prefix + '#' + packet.nsp + '#' + room + '#';
+          var msg = msgpack.encode([uid, packet, opts]);
+          pub.publish(chn, msg);
       } else {
         var chn = prefix + '#' + packet.nsp + '#';
         var msg = msgpack.encode([uid, packet, opts]);
