@@ -4,11 +4,12 @@
  */
 
 var uid2 = require('uid2');
-var redis = require('redis').createClient;
+//var redis = require('redis').createClient;
 var msgpack = require('msgpack-js');
 var Adapter = require('socket.io-adapter');
 var Emitter = require('events').EventEmitter;
 var debug = require('debug')('socket.io-redis');
+var util= require('util');
 
 /**
  * Module exports.
@@ -73,7 +74,7 @@ function adapter(uri, opts){
     sub.psubscribe(prefix + '#*', function(err){
       if (err) self.emit('error', err);
     });
-    sub.on('pmessage', this.onmessage.bind(this));
+    sub.on('pmessageBuffer', this.onmessage.bind(this));
   }
 
   /**
@@ -89,7 +90,8 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onmessage = function(pattern, channel, msg){
-    var pieces = channel.split('#');
+    //debug("channel: "+util.inspect(channel));
+    var pieces = channel.toString().split('#');
     if (uid == pieces.pop()) return debug('ignore same uid');
     var args = msgpack.decode(msg);
 
