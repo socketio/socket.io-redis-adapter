@@ -13,7 +13,7 @@
     "async": "0.9.0",
     "debug": "0.7.4",
     "msgpack-js": "0.3.0",
-    "redis": "0.10.1",
+    "redis": "2.3.0",
     "socket.io-adapter": "automattic/socket.io-adapter#de5cba",
     "uid2": "0.0.3"
   },

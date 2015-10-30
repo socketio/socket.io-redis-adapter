@@ -50,7 +50,7 @@ function adapter(uri, opts){
 
   // init clients if needed
   if (!pub) pub = redis(port, host);
-  if (!sub) sub = redis(port, host, { detect_buffers: true });
+  if (!sub) sub = redis(port, host, { return_buffers: true });
 
   // this server's key
   var uid = uid2(6);

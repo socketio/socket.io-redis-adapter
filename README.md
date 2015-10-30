@@ -74,11 +74,11 @@ a connection string.
 var redis = require('redis').createClient;
 var adapter = require('socket.io-redis');
 var pub = redis(port, host, { auth_pass: "pwd" });
-var sub = redis(port, host, { detect_buffers: true, auth_pass: "pwd" });
+var sub = redis(port, host, { return_buffers: true, auth_pass: "pwd" });
 io.adapter(adapter({ pubClient: pub, subClient: sub }));
 ```
 
-Make sure the `detect_buffers` option is set to `true` for the sub client.
+Make sure the `return_buffers` option is set to `true` for the sub client.
 
 ## License
 
