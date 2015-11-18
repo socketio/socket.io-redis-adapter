@@ -32,6 +32,7 @@ The following options are allowed:
 - `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
 - `host`: host to connect to redis on (`localhost`)
 - `port`: port to connect to redis on (`6379`)
+- `auth_pass`: optional, the redis client password
 - `pubClient`: optional, the redis client to publish events on
 - `subClient`: optional, the redis client to subscribe to events on
 
@@ -64,10 +65,16 @@ adapter.pubClient.on('error', function(){});
 adapter.subClient.on('error', function(){});
 ```
 
-## Custom client (eg: with authentication)
+## Redis client with authentication
 
-If you need to create a redisAdapter to a redis instance
-that has a password, use pub/sub options instead of passing
+```js
+var redis = require('socket.io-redis');
+io.adapter(redis({ host: 'localhost', port: 6379, auth_pass: "pwd" }));
+```
+
+## Custom client
+
+If you need to create a custom client, use pub/sub options instead of passing
 a connection string.
 
 ```js
