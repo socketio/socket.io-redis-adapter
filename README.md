@@ -1,6 +1,6 @@
 # socket.io-redis
 
-[![Build Status](https://travis-ci.org/Automattic/socket.io-redis.svg?branch=master)](https://travis-ci.org/Automattic/socket.io-redis)
+[![Build Status](https://travis-ci.org/socketio/socket.io-redis.svg?branch=master)](https://travis-ci.org/socketio/socket.io-redis)
 [![NPM version](https://badge.fury.io/js/socket.io-redis.svg)](http://badge.fury.io/js/socket.io-redis)
 
 ## How to use
