@@ -122,15 +122,14 @@ function adapter(uri, opts){
   Redis.prototype.broadcast = function(packet, opts, remote){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) {
+      var chn = prefix + '#' + packet.nsp + '#';
+      var msg = msgpack.encode([uid, packet, opts]);
       if (opts.rooms) {
         opts.rooms.forEach(function(room) {
-          var chn = prefix + '#' + packet.nsp + '#' + room + '#';
-          var msg = msgpack.encode([uid, packet, opts]);
-          pub.publish(chn, msg);
+          var chnRoom = chn + room + '#';
+          pub.publish(chnRoom, msg);
         });
       } else {
-        var chn = prefix + '#' + packet.nsp + '#';
-        var msg = msgpack.encode([uid, packet, opts]);
         pub.publish(chn, msg);
       }
     }
