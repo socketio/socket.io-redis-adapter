@@ -42,6 +42,7 @@ function adapter(uri, opts){
   }
 
   // opts
+  var databaseNumber = opts.databaseNumber || 0;
   var host = opts.host || '127.0.0.1';
   var port = Number(opts.port || 6379);
   var pub = opts.pubClient;
@@ -51,6 +52,14 @@ function adapter(uri, opts){
   // init clients if needed
   if (!pub) pub = redis(port, host);
   if (!sub) sub = redis(port, host, { return_buffers: true });
+  if (0 !== databaseNumber) {
+    if (!opts.pubClient) {
+      pub.select(databaseNumber);
+    }
+    if (!opts.subClient) {
+      sub.select(databaseNumber);
+    }
+  }
 
   // this server's key
   var uid = uid2(6);

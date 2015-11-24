@@ -29,6 +29,7 @@ is located. For a list of options see below.
 
 The following options are allowed:
 
+- `databaseNumber`: the number of the redis database to connect to (`0`)
 - `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
 - `host`: host to connect to redis on (`localhost`)
 - `port`: port to connect to redis on (`6379`)
