@@ -122,7 +122,7 @@ function adapter(uri, opts){
   Redis.prototype.broadcast = function(packet, opts, remote){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) {
-      var chn = prefix + '#' + packet.nsp + '#';
+      var chn = this.prefix + '#' + packet.nsp + '#';
       var msg = msgpack.encode([uid, packet, opts]);
       if (opts.rooms) {
         opts.rooms.forEach(function(room) {
@@ -151,7 +151,7 @@ function adapter(uri, opts){
     this.sids[id][room] = true;
     this.rooms[room] = this.rooms[room] || {};
     this.rooms[room][id] = true;
-    var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+    var channel = this.prefix + '#' + this.nsp.name + '#' + room + '#';
     sub.subscribe(channel, function(err){
       if (err) {
         self.emit('error', err);
@@ -182,7 +182,7 @@ function adapter(uri, opts){
 
     if (this.rooms.hasOwnProperty(room) && !Object.keys(this.rooms[room]).length) {
       delete this.rooms[room];
-      var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+      var channel = this.prefix + '#' + this.nsp.name + '#' + room + '#';
       sub.unsubscribe(channel, function(err){
         if (err) {
           self.emit('error', err);
@@ -219,7 +219,7 @@ function adapter(uri, opts){
 
       if (self.rooms.hasOwnProperty(room) && !Object.keys(self.rooms[room]).length) {
         delete self.rooms[room];
-        var channel = prefix + '#' + self.nsp.name + '#' + room + '#';
+        var channel = self.prefix + '#' + self.nsp.name + '#' + room + '#';
         return sub.unsubscribe(channel, function(err){
           if (err) return self.emit('error', err);
           next();
