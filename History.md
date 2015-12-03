@@ -1,4 +1,18 @@
 
+0.2.0 / 2015-12-03
+==================
+
+  * package: bump `debug`
+  * replace `detect_buffers` with `return_buffers`, update redis
+  * remove duplicated `#`
+  * remove redundancy and minor performance optimization
+  * better instrumentation
+  * fire `del` callback when unsubscribing
+  * improve error handling
+  * expose constructor properties in resulting adapter
+  * remove `socket` option, as we would need two sockets anyways
+  * listen for separate channels for namespaces and rooms
+
 0.1.4 / 2014-11-25
 ==================
 
