@@ -69,8 +69,22 @@ function adapter(uri, opts){
     this.prefix = prefix;
     this.pubClient = pub;
     this.subClient = sub;
+    this.ids = {};
 
     var self = this;
+
+    this.cleanupIntervalId = setInterval(function() {
+      var threshold = Date.now() - 30 * 1000;
+      var ids = self.ids;
+      for (var id in ids) {
+        if (ids.hasOwnProperty(id)) {
+          if (ids[id] < threshold) {
+            delete ids[id];
+          }
+        }
+      }
+    }, 60 * 1000);
+
     sub.subscribe(prefix + '#' + nsp.name + '#', function(err){
       if (err) self.emit('error', err);
     });
@@ -90,6 +104,7 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onmessage = function(channel, msg){
+    var self = this;
     var args = msgpack.decode(msg);
     var packet;
 
@@ -103,6 +118,12 @@ function adapter(uri, opts){
 
     if (!packet || packet.nsp != this.nsp.name) {
       return debug('ignore different namespace');
+    }
+
+    var id = args[2];
+    if (id) {
+      if (this.ids[id]) return debug('ignore duplicated message');
+      this.ids[id] = Date.now();
     }
 
     args.push(true);
@@ -123,14 +144,16 @@ function adapter(uri, opts){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) {
       var chn = prefix + '#' + packet.nsp + '#';
-      var msg = msgpack.encode([uid, packet, opts]);
-      if (opts.rooms) {
-        opts.rooms.forEach(function(room) {
+      var rooms = opts.rooms;
+      var args = [uid, packet, opts];
+      if (rooms && rooms.length) {
+        var msg = msgpack.encode(rooms.length > 1 ? args.concat(uid2(6)) : args);
+        rooms.forEach(function(room) {
           var chnRoom = chn + room + '#';
           pub.publish(chnRoom, msg);
         });
       } else {
-        pub.publish(chn, msg);
+        pub.publish(chn, msgpack.encode(args));
       }
     }
   };
@@ -236,6 +259,14 @@ function adapter(uri, opts){
       delete self.sids[id];
       if (fn) fn(null);
     });
+  };
+
+  /**
+   * Closes and clean up the adapter.
+   */
+
+  Redis.prototype.close = function(){
+    clearInterval(this.cleanupIntervalId);
   };
 
   Redis.uid = uid;
