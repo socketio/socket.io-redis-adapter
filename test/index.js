@@ -14,6 +14,8 @@ describe('socket.io-redis', function(){
         client1.on('woot', function(a, b){
           expect(a).to.eql([]);
           expect(b).to.eql({ a: 'b' });
+          client1.disconnect();
+          client2.disconnect();
           done();
         });
         server2.on('connection', function(c2){
@@ -44,6 +46,9 @@ describe('socket.io-redis', function(){
           });
 
           client1.on('broadcast', function(){
+            client1.disconnect();
+            client2.disconnect();
+            client3.disconnect();
             setTimeout(done, 100);
           });
 
@@ -55,6 +60,55 @@ describe('socket.io-redis', function(){
             throw new Error('Not in room');
           });
         });
+      });
+    });
+  });
+
+  it('doesn\'t broadcast to left rooms', function(done){
+    create(function(server1, client1){
+      create(function(server2, client2){
+        create(function(server3, client3){
+          server1.on('connection', function(c1){
+            c1.join('woot');
+            c1.leave('woot');
+          });
+
+          server2.on('connection', function(c2){
+            c2.on('do broadcast', function(){
+              c2.broadcast.to('woot').emit('broadcast');
+
+              setTimeout(function() {
+                client1.disconnect();
+                client2.disconnect();
+                client3.disconnect();
+                done();
+              }, 100);
+            });
+          });
+
+          server3.on('connection', function(c3){
+            client2.emit('do broadcast');
+          });
+
+          client1.on('broadcast', function(){
+            throw new Error('Not in room');
+          });
+        });
+      });
+    });
+  });
+
+  it('deletes rooms upon disconnection', function(done){
+    create(function(server, client){
+      server.on('connection', function(c){
+        c.join('woot');
+        c.on('disconnect', function() {
+          expect(c.adapter.sids[c.id]).to.be.empty();
+          expect(c.adapter.rooms).to.be.empty();
+          client.disconnect();
+          done();
+        });
+        c.disconnect();
       });
     });
   });
