@@ -147,10 +147,7 @@ function adapter(uri, opts){
   Redis.prototype.add = function(id, room, fn){
     debug('adding %s to %s ', id, room);
     var self = this;
-    this.sids[id] = this.sids[id] || {};
-    this.sids[id][room] = true;
-    this.rooms[room] = this.rooms[room] || {};
-    this.rooms[room][id] = true;
+    Adapter.prototype.add.call(this, id, room);
     var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
     sub.subscribe(channel, function(err){
       if (err) {
@@ -175,13 +172,10 @@ function adapter(uri, opts){
     debug('removing %s from %s', id, room);
 
     var self = this;
-    this.sids[id] = this.sids[id] || {};
-    this.rooms[room] = this.rooms[room] || {};
-    delete this.sids[id][room];
-    delete this.rooms[room][id];
+    var hasRoom = this.rooms.hasOwnProperty(room);
+    Adapter.prototype.del.call(this, id, room);
 
-    if (this.rooms.hasOwnProperty(room) && !Object.keys(this.rooms[room]).length) {
-      delete this.rooms[room];
+    if (hasRoom && !this.rooms[room]) {
       var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
       sub.unsubscribe(channel, function(err){
         if (err) {
@@ -216,20 +210,7 @@ function adapter(uri, opts){
     }
 
     async.forEach(Object.keys(rooms), function(room, next){
-      if (rooms.hasOwnProperty(room)) {
-        delete self.rooms[room][id];
-      }
-
-      if (self.rooms.hasOwnProperty(room) && !Object.keys(self.rooms[room]).length) {
-        delete self.rooms[room];
-        var channel = prefix + '#' + self.nsp.name + '#' + room + '#';
-        return sub.unsubscribe(channel, function(err){
-          if (err) return self.emit('error', err);
-          next();
-        });
-      } else {
-        process.nextTick(next);
-      }
+      self.del(id, room, next);
     }, function(err){
       if (err) {
         self.emit('error', err);

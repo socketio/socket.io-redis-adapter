@@ -14,12 +14,12 @@
     "debug": "2.2.0",
     "msgpack-js": "0.3.0",
     "redis": "2.3.0",
-    "socket.io-adapter": "automattic/socket.io-adapter#de5cba",
+    "socket.io-adapter": "0.4.0",
     "uid2": "0.0.3"
   },
   "devDependencies": {
-    "socket.io": "1.0.2",
-    "socket.io-client": "1.0.2",
+    "socket.io": "socketio/socket.io",
+    "socket.io-client": "socketio/socket.io-client",
     "mocha": "1.18.0",
     "expect.js": "0.3.1"
   }
