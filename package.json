@@ -4,7 +4,7 @@
   "description": "",
   "repository": {
     "type": "git",
-    "url": "git@github.com:Automattic/socket.io-redis.git"
+    "url": "git@github.com:socketio/socket.io-redis.git"
   },
   "scripts": {
     "test": "mocha"
