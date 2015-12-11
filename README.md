@@ -99,7 +99,7 @@ prefix + '#' + namespace + '#' + room + '#'
 
 A number of other libraries adopt this protocol including:
 
-- [socket.io-redis](https://github.com/socketio/socket.io-emitter)
+- [socket.io-emitter](https://github.com/socketio/socket.io-emitter)
 - [socket.io-python-emitter](https://github.com/GameXG/socket.io-python-emitter)
 
 
