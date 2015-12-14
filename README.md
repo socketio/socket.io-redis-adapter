@@ -16,7 +16,7 @@ multiple socket.io instances in different processes or servers that can
 all broadcast and emit events to and from each other.
 
 If you need to emit events to socket.io instances from a non-socket.io
-process, you should use [socket.io-emitter](https:///github.com/Automattic/socket.io-emitter).
+process, you should use [socket.io-emitter](https://github.com/socketio/socket.io-emitter).
 
 ## API
 
@@ -79,6 +79,29 @@ io.adapter(adapter({ pubClient: pub, subClient: sub }));
 ```
 
 Make sure the `return_buffers` option is set to `true` for the sub client.
+
+## Protocol
+
+The `socket.io-redis` adapter broadcasts and receives messages on particularly named Redis channels. For global broadcasts the channel name is:
+```
+prefix + '#' + namespace + '#'
+```
+
+In broadcasting to a single room the channel name is:
+```
+prefix + '#' + namespace + '#' + room + '#'
+```
+
+
+- `prefix`: The base channel name. Default value is `socket.io`. Changed by setting `opts.key` in `adapter(opts)` constructor
+- `namespace`: See https://github.com/socketio/socket.io#namespace.
+- `room` : Used if targeting a specific room.
+
+A number of other libraries adopt this protocol including:
+
+- [socket.io-emitter](https://github.com/socketio/socket.io-emitter)
+- [socket.io-python-emitter](https://github.com/GameXG/socket.io-python-emitter)
+
 
 ## License
 
