@@ -165,8 +165,8 @@ function adapter(uri, opts){
 
     packet = args[0];
 
-    if (packet && packet.nsp === undefined) {   
-      packet.nsp = '/';    
+    if (packet && packet.nsp === undefined) {
+      packet.nsp = '/';
     }
 
     if (!packet || packet.nsp != this.nsp.name) {
