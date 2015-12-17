@@ -47,7 +47,7 @@ function adapter(uri, opts){
   var pub = opts.pubClient;
   var sub = opts.subClient;
   var prefix = opts.key || 'socket.io';
-  var serverUidSize = opts.serverUidSize || 8;
+  var serverUidSize = opts.serverUidSize || 6;
   var channels = Channels({prefix: prefix});
   // ability to inspect & act on packet after publish to redis
   var onPublish = opts.onPublish;
@@ -64,12 +64,8 @@ function adapter(uri, opts){
   }
 
   // init clients if needed
-  if (!pub) { 
-    pub = redis(port, host);
-  }
-  if (!sub) {
-    sub = redis(port, host, { return_buffers: true });
-  }
+  if (!pub) pub = redis(port, host);
+  if (!sub) sub = redis(port, host, { return_buffers: true });
 
   // this server's key
   var uid = uid2(serverUidSize);
@@ -165,11 +161,13 @@ function adapter(uri, opts){
     var args = serdes.decode(msg);
     var packet;
 
-    if (uid == args.shift()) {
-      return debug('ignore same uid');
-    }
+    if (uid == args.shift()) return debug('ignore same uid');
 
     packet = args[0];
+
+    if (packet && packet.nsp === undefined) {   
+      packet.nsp = '/';    
+    }
 
     if (!packet || packet.nsp != this.nsp.name) {
       return debug('ignore different namespace');
