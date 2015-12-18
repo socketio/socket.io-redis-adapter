@@ -49,8 +49,6 @@ function adapter(uri, opts){
   var prefix = opts.key || 'socket.io';
   var serverUidSize = opts.serverUidSize || 6;
   var channels = Channels({prefix: prefix});
-  // ability to inspect & act on packet after publish to redis
-  var onPublish = opts.onPublish;
   // ability to inspect & act on packet after broadcast to socket.io
   var onBroadcast = opts.onBroadcast;
   // ability to add a different serializer/deserializer for uid+packet+opts
@@ -69,59 +67,6 @@ function adapter(uri, opts){
 
   // this server's key
   var uid = uid2(serverUidSize);
-
-  /**
-   * Publishes a serialized packet to a namespace and room.
-   *
-   * @param {String} serialized prefix + namespace + room key
-   * @param {String} serialized payload (uid + packet + options)
-   * @api private
-   */
-
-  var publish;
-  if (onPublish) {
-    publish = function(chn, msg){
-      pub.publish(chn, msg);
-      onPublish(chn, msg);
-    }
-  } else {
-    publish = function(chn, msg){
-      pub.publish(chn, msg);
-    }
-  }
-
-  /**
-   * Broadcasts a packet to a namespace + rooms combo.
-   *
-   * @param {Object} packet containing data. see:
-   *                 https://github.com/socketio/socket.io-protocol#packet
-   * @param {Object} options containing metadata.
-   * @api private
-   */
-
-  var broadcast = function(packet, opts){
-    // According to socket.io-protocol,
-    // the rooms are part of the opts {opts.rooms},
-    // and the namespace is part of the packet {packet.nsp}
-    var msg = serdes.encode([uid, packet, opts]);
-    if (opts.rooms) {
-      opts.rooms.forEach(function(room) {
-        var chn = channels.str(packet.nsp, room);
-        publish(chn, msg);
-      });
-    } else {
-      var chn = channels.str(packet.nsp);
-      publish(chn, msg);
-    }
-  };
-
-  if (onBroadcast){
-    var regularBroadcast = broadcast;
-    broadcast = function(packet, opts){
-      regularBroadcast(packet, opts);
-      onBroadcast(packet, opts);
-    }
-  }
 
   /**
    * Adapter constructor.
@@ -190,7 +135,22 @@ function adapter(uri, opts){
   Redis.prototype.broadcast = function(packet, opts, remote){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) {
-      broadcast(packet, opts);
+      // According to socket.io-protocol,
+      // the rooms are part of the opts {opts.rooms},
+      // and the namespace is part of the packet {packet.nsp}
+      var msg = serdes.encode([uid, packet, opts]);
+      if (opts.rooms) {
+        opts.rooms.forEach(function(room) {
+          var chn = channels.str(packet.nsp, room);
+          pub.publish(chn, msg);
+        });
+      } else {
+        var chn = channels.str(packet.nsp);
+        pub.publish(chn, msg);
+      }
+      if (onBroadcast) {
+        process.nextTick(onBroadcast, packet, opts, msg);
+      }
     }
   };
 
