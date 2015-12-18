@@ -12,7 +12,6 @@
   "dependencies": {
     "async": "0.9.0",
     "debug": "2.2.0",
-    "msgpack-js": "0.3.0",
     "redis": "2.4.2",
     "socket.io-adapter": "0.4.0",
     "uid2": "0.0.3"

@@ -5,11 +5,11 @@
 
 var uid2 = require('uid2');
 var redis = require('redis').createClient;
-var msgpack = require('msgpack-js');
 var Adapter = require('socket.io-adapter');
 var Emitter = require('events').EventEmitter;
 var debug = require('debug')('socket.io-redis');
 var async = require('async');
+var Channels = require('./lib/channels');
 
 /**
  * Module exports.
@@ -47,13 +47,26 @@ function adapter(uri, opts){
   var pub = opts.pubClient;
   var sub = opts.subClient;
   var prefix = opts.key || 'socket.io';
+  var serverUidSize = opts.serverUidSize || 6;
+  var channels = Channels({prefix: prefix});
+  // ability to inspect & act on packet after broadcast to socket.io
+  var onBroadcast = opts.onBroadcast;
+  // ability to add a different serializer/deserializer for uid+packet+opts
+  var serdes = opts.serdes || {
+    encode: function(msg){
+      return JSON.stringify(msg);
+    },
+    decode: function(msg){
+      return JSON.parse(msg);
+    }
+  }
 
   // init clients if needed
   if (!pub) pub = redis(port, host);
   if (!sub) sub = redis(port, host, { return_buffers: true });
 
   // this server's key
-  var uid = uid2(6);
+  var uid = uid2(serverUidSize);
 
   /**
    * Adapter constructor.
@@ -71,7 +84,7 @@ function adapter(uri, opts){
     this.subClient = sub;
 
     var self = this;
-    sub.subscribe(prefix + '#' + nsp.name + '#', function(err){
+    sub.subscribe(channels.str(nsp.name), function(err){
       if (err) self.emit('error', err);
     });
     sub.on('message', this.onmessage.bind(this));
@@ -90,7 +103,7 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onmessage = function(channel, msg){
-    var args = msgpack.decode(msg);
+    var args = serdes.decode(msg);
     var packet;
 
     if (uid == args.shift()) return debug('ignore same uid');
@@ -122,15 +135,21 @@ function adapter(uri, opts){
   Redis.prototype.broadcast = function(packet, opts, remote){
     Adapter.prototype.broadcast.call(this, packet, opts);
     if (!remote) {
-      var chn = prefix + '#' + packet.nsp + '#';
-      var msg = msgpack.encode([uid, packet, opts]);
+      // According to socket.io-protocol,
+      // the rooms are part of the opts {opts.rooms},
+      // and the namespace is part of the packet {packet.nsp}
+      var msg = serdes.encode([uid, packet, opts]);
       if (opts.rooms) {
         opts.rooms.forEach(function(room) {
-          var chnRoom = chn + room + '#';
-          pub.publish(chnRoom, msg);
+          var chn = channels.str(packet.nsp, room);
+          pub.publish(chn, msg);
         });
       } else {
+        var chn = channels.str(packet.nsp);
         pub.publish(chn, msg);
+      }
+      if (onBroadcast) {
+        process.nextTick(onBroadcast, packet, opts, msg);
       }
     }
   };
@@ -148,7 +167,7 @@ function adapter(uri, opts){
     debug('adding %s to %s ', id, room);
     var self = this;
     Adapter.prototype.add.call(this, id, room);
-    var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+    var channel = channels.str(this.nsp.name, room);
     sub.subscribe(channel, function(err){
       if (err) {
         self.emit('error', err);
@@ -176,7 +195,7 @@ function adapter(uri, opts){
     Adapter.prototype.del.call(this, id, room);
 
     if (hasRoom && !this.rooms[room]) {
-      var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+      var channel = channels.str(this.nsp.name, room);
       sub.unsubscribe(channel, function(err){
         if (err) {
           self.emit('error', err);
