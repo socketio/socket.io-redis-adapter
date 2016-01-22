@@ -34,23 +34,23 @@ function adapter(uri, opts){
     uri = null;
   }
 
-  // handle uri string
-  if (uri) {
-    uri = uri.split(':');
-    opts.host = uri[0];
-    opts.port = uri[1];
-  }
-
   // opts
-  var host = opts.host || '127.0.0.1';
-  var port = Number(opts.port || 6379);
   var pub = opts.pubClient;
   var sub = opts.subClient;
   var prefix = opts.key || 'socket.io';
 
   // init clients if needed
-  if (!pub) pub = redis(port, host);
-  if (!sub) sub = redis(port, host, { return_buffers: true });
+  function createClient(redis_opts) {
+    if (uri) {
+      // handle uri string
+      return redis(uri, redis_opts);
+    } else {
+      return redis(Number(opts.port || 6379), opts.host || '127.0.0.1', redis_opts);
+    }
+  }
+  
+  if (!pub) pub = createClient();
+  if (!sub) sub = createClient({ return_buffers: true });
 
   // this server's key
   var uid = uid2(6);
