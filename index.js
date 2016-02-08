@@ -47,6 +47,7 @@ function adapter(uri, opts){
   var pub = opts.pubClient;
   var sub = opts.subClient;
   var prefix = opts.key || 'socket.io';
+  var subEvent = opts.subEvent || 'message';
 
   // init clients if needed
   if (!pub) pub = redis(port, host);
@@ -74,7 +75,7 @@ function adapter(uri, opts){
     sub.subscribe(prefix + '#' + nsp.name + '#', function(err){
       if (err) self.emit('error', err);
     });
-    sub.on('message', this.onmessage.bind(this));
+    sub.on(subEvent, this.onmessage.bind(this));
   }
 
   /**
