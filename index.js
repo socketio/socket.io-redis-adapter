@@ -109,6 +109,30 @@ function adapter(uri, opts){
 
     this.broadcast.apply(this, args);
   };
+  
+  /**
+ * Subscribe to error events, so they are catched and no more unhandled exceptions
+ * We attach to both clients and buffer errors that occur within 10ms. That way some errors might disappear but connection errors wo
+n't fire twice.
+ * @param {Function} handler Function to call on error
+ */
+Redis.prototype.onerror = function (handler) {
+        // prevent error events from firing twice
+
+        var bufferTimer;
+        var bufferedHandler = function (err) {
+                if(bufferTimer) {
+                        clearTimeout(bufferTimer);
+                }
+
+                bufferTimer = setTimeout(function () {
+                        handler(err);
+                },10);
+        }
+
+        this.pubClient.on('error', bufferedHandler);
+        this.subClient.on('error', bufferedHandler);
+}
 
   /**
    * Broadcasts a packet.
