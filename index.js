@@ -46,6 +46,7 @@ function adapter(uri, opts){
   var port = Number(opts.port || 6379);
   var pub = opts.pubClient;
   var sub = opts.subClient;
+  var prefix = opts.key || 'socket.io';
   var password = opts.password;
 
   // init clients if needed
