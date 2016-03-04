@@ -47,10 +47,12 @@ function adapter(uri, opts){
   var pub = opts.pubClient;
   var sub = opts.subClient;
   var prefix = opts.key || 'socket.io';
+  var password = opts.password;
 
   // init clients if needed
-  if (!pub) pub = redis(port, host);
-  if (!sub) sub = redis(port, host, { return_buffers: true });
+  if (!pub) pub = redis(port, host, { auth_pass: password });
+  if (!sub) sub = redis(port, host, { return_buffers: true, auth_pass: password });
+
 
   // this server's key
   var uid = uid2(6);
