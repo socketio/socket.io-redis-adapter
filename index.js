@@ -45,9 +45,7 @@ function adapter(uri, opts){
       // handle uri string
       return redis(uri, redis_opts);
     } else {
-      var port = Number(opts.port || 6379);
-      var host = opts.host || '127.0.0.1';
-      return redis(port, host, redis_opts);
+      return redis(opts.port, opts.host, redis_opts);
     }
   }
   
