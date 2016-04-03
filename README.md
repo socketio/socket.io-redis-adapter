@@ -32,6 +32,7 @@ The following options are allowed:
 - `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
 - `host`: host to connect to redis on (`localhost`)
 - `port`: port to connect to redis on (`6379`)
+- `subEvent`: optional, the redis client event name to subscribe to (`message`)
 - `pubClient`: optional, the redis client to publish events on
 - `subClient`: optional, the redis client to subscribe to events on
 
@@ -41,6 +42,9 @@ with an equivalent API.
 
 If you supply clients, make sure you initialized them with 
 the `return_buffers` option set to `true`.
+
+You can supply [ioredis](https://github.com/luin/ioredis) as a client
+by providing `messageBuffer` as the subEvent option.
 
 ### RedisAdapter
 
