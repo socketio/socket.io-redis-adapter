@@ -68,11 +68,21 @@ function adapter(uri, opts){
 
     this.uid = uid;
     this.prefix = prefix;
+    this.channel = prefix + '#' + nsp.name + '#';
+    if (String.prototype.startsWith) {
+      this.channelMatches = function (messageChannel, subscribedChannel) {
+        return messageChannel.startsWith(subscribedChannel);
+      }
+    } else { // Fallback to slow indexOf impl for older Node.js
+      this.channelMatches = function (messageChannel, subscribedChannel) {
+        return messageChannel.indexOf(subscribedChannel) === 0;
+      }
+    }
     this.pubClient = pub;
     this.subClient = sub;
 
     var self = this;
-    sub.subscribe(prefix + '#' + nsp.name + '#', function(err){
+    sub.subscribe(this.channel, function(err){
       if (err) self.emit('error', err);
     });
     sub.on(subEvent, this.onmessage.bind(this));
@@ -91,6 +101,9 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onmessage = function(channel, msg){
+    if (!this.channelMatches(channel.toString(), this.channel)) {
+      return debug('ignore different channel');
+    }
     var args = msgpack.decode(msg);
     var packet;
 
