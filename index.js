@@ -73,7 +73,7 @@ function adapter(uri, opts){
       this.channelMatches = function (messageChannel, subscribedChannel) {
         return messageChannel.startsWith(subscribedChannel);
       }
-    } else { // Fallback to slow indexOf impl for older Node.js
+    } else { // Fallback to other impl for older Node.js
       this.channelMatches = function (messageChannel, subscribedChannel) {
         return messageChannel.substr(0, subscribedChannel.length) === subscribedChannel;
       }
