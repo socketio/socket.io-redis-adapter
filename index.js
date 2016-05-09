@@ -75,7 +75,7 @@ function adapter(uri, opts){
       }
     } else { // Fallback to slow indexOf impl for older Node.js
       this.channelMatches = function (messageChannel, subscribedChannel) {
-        return messageChannel.indexOf(subscribedChannel) === 0;
+        return messageChannel.substr(0, subscribedChannel.length) === subscribedChannel;
       }
     }
     this.pubClient = pub;
