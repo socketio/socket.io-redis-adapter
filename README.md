@@ -58,7 +58,7 @@ that a regular `Adapter` does not
 - `subClient`
 - `clientsTimeout`
 
-RedisAdapter#clients(rooms:Array, fn:Function)
+### RedisAdapter#clients(rooms:Array, fn:Function)
 
 Returns the list of client IDs connected to `rooms` across all nodes. See [Namespace#clients(fn:Function)](https://github.com/socketio/socket.io#namespaceclientsfnfunction)
 
