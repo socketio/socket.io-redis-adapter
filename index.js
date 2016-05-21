@@ -37,10 +37,10 @@ function adapter(uri, opts){
   // opts
   var pub = opts.pubClient;
   var sub = opts.subClient;
-  var syncSub = opts.syncClient;
 
   var prefix = opts.key || 'socket.io';
   var subEvent = opts.subEvent || 'message';
+  var clientsTimeout = opts.clientsTimeout || 1000;
 
   // init clients if needed
   function createClient(redis_opts) {
@@ -54,9 +54,8 @@ function adapter(uri, opts){
   
   if (!pub) pub = createClient();
   if (!sub) sub = createClient({ return_buffers: true });
-  if (!syncSub) syncSub = createClient();
-
-  var syncPub = syncSub.duplicate();
+  
+  var subJson = sub.duplicate({ return_buffers: false });
 
   // this server's key
   var uid = uid2(6);
@@ -73,9 +72,10 @@ function adapter(uri, opts){
 
     this.uid = uid;
     this.prefix = prefix;
+    this.clientsTimeout = clientsTimeout;
 
     this.channel = prefix + '#' + nsp.name + '#';
-    this.syncChannel = prefix + '-sync#request';
+    this.syncChannel = prefix + '-sync#request#' + this.nsp.name + '#';
 
     if (String.prototype.startsWith) {
       this.channelMatches = function (messageChannel, subscribedChannel) {
@@ -95,12 +95,12 @@ function adapter(uri, opts){
       if (err) self.emit('error', err);
     });
 
-    syncSub.subscribe(this.syncChannel, function(err){
+    subJson.subscribe(this.syncChannel, function(err){
       if (err) self.emit('error', err);
     });
 
     sub.on(subEvent, this.onmessage.bind(this));
-    syncSub.on(subEvent, this.onclients.bind(this));
+    subJson.on(subEvent, this.onclients.bind(this));
   }
 
   /**
@@ -146,6 +146,11 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.onclients = function(channel, msg){
+
+    if (!this.channelMatches(channel.toString(), this.syncChannel)) {
+      return debug('ignore different channel');
+    }
+
     try {
       var decoded = JSON.parse(msg);
     } catch(err){
@@ -164,7 +169,7 @@ function adapter(uri, opts){
         clients : clients
       });
 
-      syncPub.publish(responseChn, response);
+      pub.publish(responseChn, response);
     });
     
   };
@@ -301,8 +306,7 @@ function adapter(uri, opts){
     var transaction = uid2(6);
     var responseChn = prefix + '-sync#response#' + transaction;
 
-    var clientsSub = syncPub.duplicate();
-    syncPub.send_command('pubsub', ['numsub', self.syncChannel], function(err, numsub){
+    pub.send_command('pubsub', ['numsub', self.syncChannel], function(err, numsub){
       if (err) {
         self.emit('error', err);
         if (fn) fn(err);
@@ -312,9 +316,9 @@ function adapter(uri, opts){
       numsub = numsub[1];
 
       var msg_count = 0;
-      var clients = [];
+      var clients = {};
 
-      clientsSub.on("subscribe", function (channel, count) {
+      subJson.on("subscribe", function subscribed(channel, count) {
 
         var request = JSON.stringify({
           transaction : transaction,
@@ -323,27 +327,37 @@ function adapter(uri, opts){
 
         /*If there is no response for 5 seconds, return result;*/
         var timeout = setTimeout(function() {
-          console.warn('Too many subscribers on the sync channel');
-          if (fn) process.nextTick(fn.bind(null, null, clients));
-        }, 5000);
+          if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
+        }, self.clientsTimeout);
 
-        clientsSub.on(subEvent, function (channel, msg) {
+        subJson.on(subEvent, function onEvent(channel, msg) {
+
+          if (!self.channelMatches(channel.toString(), responseChn)) {
+            return debug('ignore different channel');
+          }
+
           var response = JSON.parse(msg);
-          clients = clients.concat(response.clients);
+          
+          for(var i = 0; i < response.clients.length; i++){
+            clients[response.clients[i]] = true;
+          }
+
           msg_count++;
           if(msg_count == numsub){
             clearTimeout(timeout);
-            clientsSub.unsubscribe();
-            clientsSub.quit();
-            if (fn) process.nextTick(fn.bind(null, null, clients));
+            subJson.unsubscribe(responseChn);
+            subJson.removeListener('subscribe', subscribed);
+            subJson.removeListener(subEvent, onEvent);
+
+            if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
           }
         });
 
-        syncPub.publish(self.syncChannel, request);
+        pub.publish(self.syncChannel, request);
 
       });
 
-      clientsSub.subscribe(responseChn);
+      subJson.subscribe(responseChn);
 
     });
 
@@ -353,6 +367,7 @@ function adapter(uri, opts){
   Redis.pubClient = pub;
   Redis.subClient = sub;
   Redis.prefix = prefix;
+  Redis.clientsTimeout = clientsTimeout;
 
   return Redis;
 
