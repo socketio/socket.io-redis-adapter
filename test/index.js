@@ -113,6 +113,50 @@ describe('socket.io-redis', function(){
     });
   });
 
+  it('returns clients in the same room', function(done){
+    create(function(server1, client1){
+      create(function(server2, client2){
+        create(function(server3, client3){
+          
+          var ready = 0;
+
+          server1.on('connection', function(c1){
+            c1.join('woot');
+            ready++;;
+            if(ready === 3){
+              test();
+            }
+          });
+
+          server2.on('connection', function(c1){
+            c1.join('woot');
+            ready++;;
+            if(ready === 3){
+              test();
+            }
+          });
+
+          server3.on('connection', function(c3){
+            ready++;;
+            if(ready === 3){
+              test();
+            }
+          });
+
+          function test(){
+            setTimeout(function(){
+              server1.adapter.clients(['woot'], function(err, clients){
+                expect(clients.length).to.eql(2);
+                done();
+              })
+            }, 100);
+          }
+
+        });
+      });
+    });
+  });
+
   // create a pair of socket.io server+client
   function create(nsp, fn){
     var srv = http();

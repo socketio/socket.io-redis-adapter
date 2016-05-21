@@ -37,6 +37,8 @@ function adapter(uri, opts){
   // opts
   var pub = opts.pubClient;
   var sub = opts.subClient;
+  var syncSub = opts.syncClient;
+
   var prefix = opts.key || 'socket.io';
   var subEvent = opts.subEvent || 'message';
 
@@ -52,6 +54,9 @@ function adapter(uri, opts){
   
   if (!pub) pub = createClient();
   if (!sub) sub = createClient({ return_buffers: true });
+  if (!syncSub) syncSub = createClient();
+
+  var syncPub = syncSub.duplicate();
 
   // this server's key
   var uid = uid2(6);
@@ -68,7 +73,10 @@ function adapter(uri, opts){
 
     this.uid = uid;
     this.prefix = prefix;
+
     this.channel = prefix + '#' + nsp.name + '#';
+    this.syncChannel = prefix + '-sync#request';
+
     if (String.prototype.startsWith) {
       this.channelMatches = function (messageChannel, subscribedChannel) {
         return messageChannel.startsWith(subscribedChannel);
@@ -82,10 +90,17 @@ function adapter(uri, opts){
     this.subClient = sub;
 
     var self = this;
+
     sub.subscribe(this.channel, function(err){
       if (err) self.emit('error', err);
     });
+
+    syncSub.subscribe(this.syncChannel, function(err){
+      if (err) self.emit('error', err);
+    });
+
     sub.on(subEvent, this.onmessage.bind(this));
+    syncSub.on(subEvent, this.onclients.bind(this));
   }
 
   /**
@@ -122,6 +137,36 @@ function adapter(uri, opts){
     args.push(true);
 
     this.broadcast.apply(this, args);
+  };
+
+  /**
+   * Called with a subscription message on sync
+   *
+   * @api private
+   */
+
+  Redis.prototype.onclients = function(channel, msg){
+    try {
+      var decoded = JSON.parse(msg);
+    } catch(err){
+      self.emit('error', err);
+      return;
+    }
+
+    Adapter.prototype.clients.call(this, decoded.rooms, function(err, clients){
+      if(err){
+        self.emit('error', err);
+        return;
+      }
+
+      var responseChn = prefix + '-sync#response#' + decoded.transaction;
+      var response = JSON.stringify({
+        clients : clients
+      });
+
+      syncPub.publish(responseChn, response);
+    });
+    
   };
 
   /**
@@ -234,6 +279,74 @@ function adapter(uri, opts){
       delete self.sids[id];
       if (fn) fn(null);
     });
+  };
+
+  /**
+   * Gets a list of clients by sid.
+   *
+   * @param {Array} explicit set of rooms to check.
+   * @api public
+   */
+
+  Redis.prototype.clients = function(rooms, fn){
+    if ('function' == typeof rooms){
+      fn = rooms;
+      rooms = null;
+    }
+
+    rooms = rooms || [];
+
+    var self = this;
+
+    var transaction = uid2(6);
+    var responseChn = prefix + '-sync#response#' + transaction;
+
+    var clientsSub = syncPub.duplicate();
+    syncPub.send_command('pubsub', ['numsub', self.syncChannel], function(err, numsub){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+
+      numsub = numsub[1];
+
+      var msg_count = 0;
+      var clients = [];
+
+      clientsSub.on("subscribe", function (channel, count) {
+
+        var request = JSON.stringify({
+          transaction : transaction,
+          rooms : rooms
+        });
+
+        /*If there is no response for 5 seconds, return result;*/
+        var timeout = setTimeout(function() {
+          console.warn('Too many subscribers on the sync channel');
+          if (fn) process.nextTick(fn.bind(null, null, clients));
+        }, 5000);
+
+        clientsSub.on(subEvent, function (channel, msg) {
+          var response = JSON.parse(msg);
+          clients = clients.concat(response.clients);
+          msg_count++;
+          if(msg_count == numsub){
+            clearTimeout(timeout);
+            clientsSub.unsubscribe();
+            clientsSub.quit();
+            if (fn) process.nextTick(fn.bind(null, null, clients));
+          }
+        });
+
+        syncPub.publish(self.syncChannel, request);
+
+      });
+
+      clientsSub.subscribe(responseChn);
+
+    });
+
   };
 
   Redis.uid = uid;
