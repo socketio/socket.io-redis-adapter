@@ -2,6 +2,7 @@
   "name": "socket.io-redis",
   "version": "1.0.0",
   "description": "",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git@github.com:socketio/socket.io-redis.git"
