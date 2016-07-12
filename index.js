@@ -50,8 +50,11 @@ function adapter(uri, opts){
     }
   }
   
-  if (!pub) pub = createClient();
-  if (!sub) sub = createClient({ return_buffers: true });
+  if (!pub) pub = createClient(opts);
+  if (!sub) {
+  	opts.return_buffers = true;
+  	sub = createClient(opts);
+  }
 
   // this server's key
   var uid = uid2(6);
