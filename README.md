@@ -11,6 +11,16 @@ var redis = require('socket.io-redis');
 io.adapter(redis({ host: 'localhost', port: 6379 }));
 ```
 
+If you need auth_pass or db options, please use adapter instead of passing redis parameter:
+
+```js
+var redis = require('redis').createClient;
+var adapter = require('socket.io-redis');
+var pub = redis(port, host, { auth_pass: "pwd", db: 8 });
+var sub = redis(port, host, { return_buffers: true, auth_pass: "pwd", db: 9 });
+io.adapter(adapter({ pubClient: pub, subClient: sub }));
+```
+
 By running socket.io with the `socket.io-redis` adapter you can run
 multiple socket.io instances in different processes or servers that can
 all broadcast and emit events to and from each other.
