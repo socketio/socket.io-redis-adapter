@@ -135,7 +135,7 @@ function adapter(uri, opts){
 
   Redis.prototype.broadcast = function(packet, opts, remote){
     Adapter.prototype.broadcast.call(this, packet, opts);
-    if (!remote) {
+    if (!remote && (!opts || !opts.flags || !opts.flags.local)) {
       var chn = prefix + '#' + packet.nsp + '#';
       var msg = msgpack.encode([uid, packet, opts]);
       if (opts.rooms) {
