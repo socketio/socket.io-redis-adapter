@@ -68,6 +68,46 @@ describe('socket.io-redis with ioredis', function(){
     });
   });
 
+  it('doesn\'t broadcast when using the local flag', function(done){
+    create(function(server1, client1){
+      create(function(server2, client2){
+        create(function(server3, client3){
+          server1.on('connection', function(c1){
+            c1.join('woot');
+          });
+
+          server2.on('connection', function(c2){
+            c2.join('woot');
+
+            c2.on('do broadcast', function(){
+              server2.local.to('woot').emit('local broadcast');
+            });
+          });
+
+          server3.on('connection', function(c3){
+            // does not join, signals broadcast
+            client2.emit('do broadcast');
+          });
+
+          client1.on('local broadcast', function(){
+            throw new Error('Not in local server');
+          });
+
+          client2.on('local broadcast', function(){
+            client1.disconnect();
+            client2.disconnect();
+            client3.disconnect();
+            setTimeout(done, 100);
+          });
+
+          client3.on('local broadcast', function(){
+            throw new Error('Not in local server');
+          });
+        });
+      });
+    });
+  });
+
   it('doesn\'t broadcast to left rooms', function(done){
     create(function(server1, client1){
       create(function(server2, client2){

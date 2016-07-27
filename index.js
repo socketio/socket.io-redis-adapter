@@ -186,7 +186,7 @@ function adapter(uri, opts){
 
   Redis.prototype.broadcast = function(packet, opts, remote){
     packet.nsp = this.nsp.name;
-    if (!remote) {
+    if (!(remote || (opts && opts.flags && opts.flags.local))) {
       var self = this;
       var msg = msgpack.encode([uid, packet, opts]);
       if (opts.rooms) {
