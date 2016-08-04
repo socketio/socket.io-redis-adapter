@@ -134,8 +134,17 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.broadcast = function(packet, opts, remote){
+    var newPacket = Object.keys(packet).reduce(function (obj, item) {
+      obj[item] = packet[item];
+      return obj;
+    },{});
+
     Adapter.prototype.broadcast.call(this, packet, opts);
+    newPacket.nsp = packet.nsp;
+    newPacket.type = packet.type;
+
     if (!remote) {
+      var packet = newPacket;
       var chn = prefix + '#' + packet.nsp + '#';
       var msg = msgpack.encode([uid, packet, opts]);
       if (opts.rooms) {
