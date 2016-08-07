@@ -147,7 +147,9 @@ function adapter(uri, opts){
 
   Redis.prototype.onclients = function(channel, msg){
 
-    if (!this.channelMatches(channel.toString(), this.syncChannel)) {
+    var self = this;
+
+    if (!self.channelMatches(channel.toString(), self.syncChannel)) {
       return debug('ignore different channel');
     }
 
@@ -158,7 +160,7 @@ function adapter(uri, opts){
       return;
     }
 
-    Adapter.prototype.clients.call(this, decoded.rooms, function(err, clients){
+    Adapter.prototype.clients.call(self, decoded.rooms, function(err, clients){
       if(err){
         self.emit('error', err);
         return;
@@ -318,14 +320,14 @@ function adapter(uri, opts){
       var msg_count = 0;
       var clients = {};
 
-      subJson.on("subscribe", function subscribed(channel, count) {
+      subJson.on('subscribe', function subscribed(channel, count) {
 
         var request = JSON.stringify({
           transaction : transaction,
           rooms : rooms
         });
 
-        /*If there is no response for 5 seconds, return result;*/
+        /*If there is no response for 1 second, return result;*/
         var timeout = setTimeout(function() {
           if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
         }, self.clientsTimeout);
@@ -337,6 +339,9 @@ function adapter(uri, opts){
           }
 
           var response = JSON.parse(msg);
+
+          //Ignore if response does not contain 'clients' key
+          if(!response.clients || !Array.isArray(response.clients)) return;
           
           for(var i = 0; i < response.clients.length; i++){
             clients[response.clients[i]] = true;
