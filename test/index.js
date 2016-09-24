@@ -11,15 +11,17 @@ describe('socket.io-redis', function(){
   it('broadcasts', function(done){
     create(function(server1, client1){
       create(function(server2, client2){
-        client1.on('woot', function(a, b){
+        client1.on('woot', function(a, b, c){
           expect(a).to.eql([]);
           expect(b).to.eql({ a: 'b' });
+          expect(Buffer.isBuffer(c)).to.be(true);
           client1.disconnect();
           client2.disconnect();
           done();
         });
         server2.on('connection', function(c2){
-          c2.broadcast.emit('woot', [], { a: 'b' });
+          var buf = new Buffer('asdfasdf', 'utf8');
+          c2.broadcast.emit('woot', [], { a: 'b' }, buf);
         });
       });
     });

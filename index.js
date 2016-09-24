@@ -134,7 +134,7 @@ function adapter(uri, opts){
    */
 
   Redis.prototype.broadcast = function(packet, opts, remote){
-    Adapter.prototype.broadcast.call(this, packet, opts);
+    packet.nsp = this.nsp.name;
     if (!remote) {
       var chn = prefix + '#' + packet.nsp + '#';
       var msg = msgpack.encode([uid, packet, opts]);
@@ -147,6 +147,7 @@ function adapter(uri, opts){
         pub.publish(chn, msg);
       }
     }
+    Adapter.prototype.broadcast.call(this, packet, opts);
   };
 
   /**
