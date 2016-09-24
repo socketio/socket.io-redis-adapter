@@ -35,6 +35,7 @@ The following options are allowed:
 - `subEvent`: optional, the redis client event name to subscribe to (`message`)
 - `pubClient`: optional, the redis client to publish events on
 - `subClient`: optional, the redis client to subscribe to events on
+- `clientsTimeout`: optional, after this timeout the adapter will stop waiting from responses to `clients` request (`1000ms`)
 
 If you decide to supply `pubClient` and `subClient`, make sure you use
 [node_redis](https://github.com/mranney/node_redis) as a client or one
@@ -55,6 +56,11 @@ that a regular `Adapter` does not
 - `prefix`
 - `pubClient`
 - `subClient`
+- `clientsTimeout`
+
+### RedisAdapter#clients(rooms:Array, fn:Function)
+
+Returns the list of client IDs connected to `rooms` across all nodes. See [Namespace#clients(fn:Function)](https://github.com/socketio/socket.io#namespaceclientsfnfunction)
 
 ## Client error handling
 

@@ -36,8 +36,10 @@ function adapter(uri, opts){
   // opts
   var pub = opts.pubClient;
   var sub = opts.subClient;
+
   var prefix = opts.key || 'socket.io';
   var subEvent = opts.subEvent || 'message';
+  var clientsTimeout = opts.clientsTimeout || 1000;
 
   // init clients if needed
   function createClient(redis_opts) {
@@ -51,6 +53,8 @@ function adapter(uri, opts){
   
   if (!pub) pub = createClient();
   if (!sub) sub = createClient({ return_buffers: true });
+  
+  var subJson = sub.duplicate({ return_buffers: false });
 
   // this server's key
   var uid = uid2(6);
@@ -67,7 +71,11 @@ function adapter(uri, opts){
 
     this.uid = uid;
     this.prefix = prefix;
+    this.clientsTimeout = clientsTimeout;
+
     this.channel = prefix + '#' + nsp.name + '#';
+    this.syncChannel = prefix + '-sync#request#' + this.nsp.name + '#';
+
     if (String.prototype.startsWith) {
       this.channelMatches = function (messageChannel, subscribedChannel) {
         return messageChannel.startsWith(subscribedChannel);
@@ -81,10 +89,17 @@ function adapter(uri, opts){
     this.subClient = sub;
 
     var self = this;
+
     sub.subscribe(this.channel, function(err){
       if (err) self.emit('error', err);
     });
+
+    subJson.subscribe(this.syncChannel, function(err){
+      if (err) self.emit('error', err);
+    });
+
     sub.on(subEvent, this.onmessage.bind(this));
+    subJson.on(subEvent, this.onclients.bind(this));
   }
 
   /**
@@ -121,6 +136,43 @@ function adapter(uri, opts){
     args.push(true);
 
     this.broadcast.apply(this, args);
+  };
+
+  /**
+   * Called with a subscription message on sync
+   *
+   * @api private
+   */
+
+  Redis.prototype.onclients = function(channel, msg){
+
+    var self = this;
+
+    if (!self.channelMatches(channel.toString(), self.syncChannel)) {
+      return debug('ignore different channel');
+    }
+
+    try {
+      var decoded = JSON.parse(msg);
+    } catch(err){
+      self.emit('error', err);
+      return;
+    }
+
+    Adapter.prototype.clients.call(self, decoded.rooms, function(err, clients){
+      if(err){
+        self.emit('error', err);
+        return;
+      }
+
+      var responseChn = prefix + '-sync#response#' + decoded.transaction;
+      var response = JSON.stringify({
+        clients : clients
+      });
+
+      pub.publish(responseChn, response);
+    });
+    
   };
 
   /**
@@ -236,10 +288,91 @@ function adapter(uri, opts){
     });
   };
 
+  /**
+   * Gets a list of clients by sid.
+   *
+   * @param {Array} explicit set of rooms to check.
+   * @api public
+   */
+
+  Redis.prototype.clients = function(rooms, fn){
+    if ('function' == typeof rooms){
+      fn = rooms;
+      rooms = null;
+    }
+
+    rooms = rooms || [];
+
+    var self = this;
+
+    var transaction = uid2(6);
+    var responseChn = prefix + '-sync#response#' + transaction;
+
+    pub.send_command('pubsub', ['numsub', self.syncChannel], function(err, numsub){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+
+      numsub = numsub[1];
+
+      var msg_count = 0;
+      var clients = {};
+
+      subJson.on('subscribe', function subscribed(channel, count) {
+
+        var request = JSON.stringify({
+          transaction : transaction,
+          rooms : rooms
+        });
+
+        /*If there is no response for 1 second, return result;*/
+        var timeout = setTimeout(function() {
+          if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
+        }, self.clientsTimeout);
+
+        subJson.on(subEvent, function onEvent(channel, msg) {
+
+          if (!self.channelMatches(channel.toString(), responseChn)) {
+            return debug('ignore different channel');
+          }
+
+          var response = JSON.parse(msg);
+
+          //Ignore if response does not contain 'clients' key
+          if(!response.clients || !Array.isArray(response.clients)) return;
+          
+          for(var i = 0; i < response.clients.length; i++){
+            clients[response.clients[i]] = true;
+          }
+
+          msg_count++;
+          if(msg_count == numsub){
+            clearTimeout(timeout);
+            subJson.unsubscribe(responseChn);
+            subJson.removeListener('subscribe', subscribed);
+            subJson.removeListener(subEvent, onEvent);
+
+            if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
+          }
+        });
+
+        pub.publish(self.syncChannel, request);
+
+      });
+
+      subJson.subscribe(responseChn);
+
+    });
+
+  };
+
   Redis.uid = uid;
   Redis.pubClient = pub;
   Redis.subClient = sub;
   Redis.prefix = prefix;
+  Redis.clientsTimeout = clientsTimeout;
 
   return Redis;
 
