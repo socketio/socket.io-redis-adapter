@@ -1,4 +1,17 @@
 
+1.1.0 / 2016-09-24
+==================
+
+ * [feature] Get all clients in a room across all nodes (#109)
+ * [feature] Added option subEvent (#95)
+ * [fix] Fix an issue when broadcasting binary data between nodes. (#122)
+ * [fix] Fixes #93 by passing full URI to redis.createClient when specified (#94)
+ * [docs] add license info (#114)
+ * [docs] Notes regarding protocol for Redis messages (rebased 3 commits) (#86)
+ * [perf] Return early when channels mismatch to skip expensive msgpack decoding (#107)
+ * [refactor] Remove unused import (#123)
+ * [chore] Updated node-redis dependency to 2.4.2, which matches socket.io-emitter (#84)
+
 1.0.0 / 2015-12-10
 ==================
 
