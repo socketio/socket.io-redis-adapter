@@ -320,7 +320,12 @@ function adapter(uri, opts){
       var msg_count = 0;
       var clients = {};
 
-      subJson.on('subscribe', function subscribed(channel, count) {
+      subJson.subscribe(responseChn, function(err) {
+        if (err) {
+          self.emit('error', err);
+          if (fn) fn(err);
+          return;
+        }
 
         var request = JSON.stringify({
           transaction : transaction,
@@ -351,7 +356,6 @@ function adapter(uri, opts){
           if(msg_count == numsub){
             clearTimeout(timeout);
             subJson.unsubscribe(responseChn);
-            subJson.removeListener('subscribe', subscribed);
             subJson.removeListener(subEvent, onEvent);
 
             if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
@@ -361,8 +365,6 @@ function adapter(uri, opts){
         pub.publish(self.syncChannel, request);
 
       });
-
-      subJson.subscribe(responseChn);
 
     });
 

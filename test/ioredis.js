@@ -3,10 +3,10 @@ var http = require('http').Server;
 var io = require('socket.io');
 var ioc = require('socket.io-client');
 var expect = require('expect.js');
-var redis = require('redis').createClient;
+var redis = require('ioredis').createClient;
 var adapter = require('../');
 
-describe('socket.io-redis', function(){
+describe('socket.io-redis with ioredis', function(){
 
   it('broadcasts', function(done){
     create(function(server1, client1){
@@ -20,8 +20,10 @@ describe('socket.io-redis', function(){
           done();
         });
         server2.on('connection', function(c2){
-          var buf = new Buffer('asdfasdf', 'utf8');
-          c2.broadcast.emit('woot', [], { a: 'b' }, buf);
+          setTimeout(function(){
+            var buf = new Buffer('asdfasdf', 'utf8');
+            c2.broadcast.emit('woot', [], { a: 'b' }, buf);
+          }, 100);
         });
       });
     });
@@ -167,7 +169,8 @@ describe('socket.io-redis', function(){
     var sio = io(srv);
     sio.adapter(adapter({
       pubClient: redis(),
-      subClient: redis(null, null, { return_buffers: true })
+      subClient: redis(null, null, { return_buffers: true }),
+      subEvent: 'messageBuffer'
     }));
     srv.listen(function(err){
       if (err) throw err; // abort tests
