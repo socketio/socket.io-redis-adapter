@@ -1,4 +1,11 @@
 
+1.1.1 / 2016-09-26
+==================
+
+ * [refactor] Use this.channel to construct the name of a channel (#129)
+ * [test] Add tests with ioredis client (#128)
+ * [chore] Restrict files included in npm package (#130)
+
 1.1.0 / 2016-09-24
 ==================
 
