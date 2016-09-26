@@ -187,15 +187,15 @@ function adapter(uri, opts){
   Redis.prototype.broadcast = function(packet, opts, remote){
     packet.nsp = this.nsp.name;
     if (!remote) {
-      var chn = prefix + '#' + packet.nsp + '#';
+      var self = this;
       var msg = msgpack.encode([uid, packet, opts]);
       if (opts.rooms) {
         opts.rooms.forEach(function(room) {
-          var chnRoom = chn + room + '#';
+          var chnRoom = self.channel + room + '#';
           pub.publish(chnRoom, msg);
         });
       } else {
-        pub.publish(chn, msg);
+        pub.publish(self.channel, msg);
       }
     }
     Adapter.prototype.broadcast.call(this, packet, opts);
@@ -214,7 +214,7 @@ function adapter(uri, opts){
     debug('adding %s to %s ', id, room);
     var self = this;
     Adapter.prototype.add.call(this, id, room);
-    var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+    var channel = this.channel + room + '#';
     sub.subscribe(channel, function(err){
       if (err) {
         self.emit('error', err);
@@ -242,7 +242,7 @@ function adapter(uri, opts){
     Adapter.prototype.del.call(this, id, room);
 
     if (hasRoom && !this.rooms[room]) {
-      var channel = prefix + '#' + this.nsp.name + '#' + room + '#';
+      var channel = this.channel + room + '#';
       sub.unsubscribe(channel, function(err){
         if (err) {
           self.emit('error', err);
