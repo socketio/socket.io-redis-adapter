@@ -138,7 +138,7 @@ describe('socket-io-redis', () => {
 						[server1, client1],
 						[server2, client2],
 						[server3, client3]
-					].map(([server, client]) => new Promise((resolve, reject) => server.adapter.clients(['woot'], (err, clients) => expect(clients).to.be.eql([server.adapter.nsp.name +'#'+ client.id]) && resolve())))
+					].map(([server, client]) => new Promise((resolve, reject) => server.adapter.clients(['woot'], (err, clients) => expect(clients).to.have.lengthOf(2) && resolve())))
 					)
 					.then(() => {
 						client1.disconnect();
