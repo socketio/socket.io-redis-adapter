@@ -51,8 +51,8 @@ function adapter(uri, opts){
     }
   }
   
-  if (!pub) pub = createClient();
-  if (!sub) sub = createClient({ return_buffers: true });
+  if (!pub) pub = createClient(opts);
+  if (!sub) sub = createClient(opts);
   
   var subJson = sub.duplicate({ return_buffers: false });
 
