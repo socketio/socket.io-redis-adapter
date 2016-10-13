@@ -36,6 +36,7 @@ The following options are allowed:
 - `pubClient`: optional, the redis client to publish events on
 - `subClient`: optional, the redis client to subscribe to events on
 - `requestsTimeout`: optional, after this timeout the adapter will stop waiting from responses to request (`1000ms`)
+- `withChannelMultiplexing`: optional, whether channel multiplexing is enabled (a new subscription will be trigggered for each room) (`true`)
 
 If you decide to supply `pubClient` and `subClient`, make sure you use
 [node_redis](https://github.com/mranney/node_redis) as a client or one

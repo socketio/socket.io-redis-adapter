@@ -49,6 +49,7 @@ function adapter(uri, opts){
   var prefix = opts.key || 'socket.io';
   var subEvent = opts.subEvent || 'message';
   var requestsTimeout = opts.requestsTimeout || 1000;
+  var withChannelMultiplexing = false !== opts.withChannelMultiplexing;
 
   // init clients if needed
   function createClient(redis_opts) {
@@ -79,6 +80,7 @@ function adapter(uri, opts){
     this.uid = uid;
     this.prefix = prefix;
     this.requestsTimeout = requestsTimeout;
+    this.withChannelMultiplexing = withChannelMultiplexing;
 
     this.channel = prefix + '#' + nsp.name + '#';
     this.requestChannel = prefix + '-request#' + this.nsp.name + '#';
@@ -279,7 +281,7 @@ function adapter(uri, opts){
     if (!(remote || (opts && opts.flags && opts.flags.local))) {
       var self = this;
       var msg = msgpack.encode([uid, packet, opts]);
-      if (opts.rooms) {
+      if (self.withChannelMultiplexing && opts.rooms) {
         opts.rooms.forEach(function(room) {
           var chnRoom = self.channel + room + '#';
           pub.publish(chnRoom, msg);
@@ -304,6 +306,11 @@ function adapter(uri, opts){
     debug('adding %s to %s ', id, room);
     var self = this;
     Adapter.prototype.add.call(this, id, room);
+
+    if (!this.withChannelMultiplexing) {
+      if (fn) fn(null);
+      return;
+    }
     var channel = this.channel + room + '#';
     sub.subscribe(channel, function(err){
       if (err) {
@@ -331,7 +338,7 @@ function adapter(uri, opts){
     var hasRoom = this.rooms.hasOwnProperty(room);
     Adapter.prototype.del.call(this, id, room);
 
-    if (hasRoom && !this.rooms[room]) {
+    if (this.withChannelMultiplexing && hasRoom && !this.rooms[room]) {
       var channel = this.channel + room + '#';
       sub.unsubscribe(channel, function(err){
         if (err) {
