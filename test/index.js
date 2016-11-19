@@ -161,6 +161,46 @@ describe('socket.io-redis', function(){
     });
   });
 
+  describe('rooms', function () {
+    it('returns rooms of a given client', function(done){
+      create(function(server1, client1){
+        create(function(server2, client2){
+
+          server1.on('connection', function(c1){
+            c1.join('woot1', function () {
+              server1.adapter.clientRooms(c1.id, function(err, rooms){
+                expect(rooms).to.eql([c1.id, 'woot1']);
+                client1.disconnect();
+                client2.disconnect();
+                done();
+              });
+            });
+          });
+
+        });
+      });
+    });
+
+    it('returns rooms of a given client from another node', function(done){
+      create(function(server1, client1){
+        create(function(server2, client2){
+
+          server1.on('connection', function(c1){
+            c1.join('woot2', function () {
+              server2.adapter.clientRooms(c1.id, function(err, rooms){
+                expect(rooms).to.eql([c1.id, 'woot2']);
+                client1.disconnect();
+                client2.disconnect();
+                done();
+              });
+            });
+          });
+
+        });
+      });
+    });
+  });
+
   // create a pair of socket.io server+client
   function create(nsp, fn){
     var srv = http();
