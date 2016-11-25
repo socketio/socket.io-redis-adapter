@@ -165,10 +165,20 @@ function adapter(uri, opts){
         return;
       }
 
+      // construct client custom data from the custom hook
+      var clientsData = [];
+      for(var i=0; i<clients.length; i++) {
+        clientsData[i] = {
+          clientId: clients[i]
+        };
+        var clientInfo = Redis.customClientHook(clients[i]);
+        if(clientInfo) {
+            clientsData[i].clientInfo = clientInfo;
+        }
+      }
+
       var responseChn = prefix + '-sync#response#' + decoded.transaction;
-      var response = JSON.stringify({
-        clients : clients
-      });
+      var response = JSON.stringify(clientsData);
 
       pub.publish(responseChn, response);
     });
@@ -318,7 +328,7 @@ function adapter(uri, opts){
       numsub = numsub[1];
 
       var msg_count = 0;
-      var clients = {};
+      var clientsData = {};
 
       subJson.subscribe(responseChn, function(err) {
         if (err) {
@@ -334,7 +344,7 @@ function adapter(uri, opts){
 
         /*If there is no response for 1 second, return result;*/
         var timeout = setTimeout(function() {
-          if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
+          if (fn) process.nextTick(fn.bind(null, null, Object.keys(clientsData), clientsData));
         }, self.clientsTimeout);
 
         subJson.on(subEvent, function onEvent(channel, msg) {
@@ -344,12 +354,8 @@ function adapter(uri, opts){
           }
 
           var response = JSON.parse(msg);
-
-          //Ignore if response does not contain 'clients' key
-          if(!response.clients || !Array.isArray(response.clients)) return;
-          
-          for(var i = 0; i < response.clients.length; i++){
-            clients[response.clients[i]] = true;
+          for(var i = 0; i < response.length; i++){
+            clientsData[response[i].clientId] = response[i].clientInfo;
           }
 
           msg_count++;
@@ -358,7 +364,7 @@ function adapter(uri, opts){
             subJson.unsubscribe(responseChn);
             subJson.removeListener(subEvent, onEvent);
 
-            if (fn) process.nextTick(fn.bind(null, null, Object.keys(clients)));
+            if (fn) process.nextTick(fn.bind(null, null, Object.keys(clientsData), clientsData));
           }
         });
 
@@ -369,6 +375,29 @@ function adapter(uri, opts){
     });
 
   };
+
+  /**
+   * Setter for the custom hook function.
+   *
+   * @param {Function} the function to be set as customClientHook
+   * @api public
+   */
+
+  Redis.setCustomClientHook = function(fn) {
+    Redis.customClientHook = fn;
+  }
+
+  /**
+   * A custom hook for redis consumer to overwrite to return custom data
+   * of a socket client.
+   *
+   * @param {String} client id
+   * @api private
+   */
+
+  Redis.customClientHook = function() {
+    return null;
+  }
 
   Redis.uid = uid;
   Redis.pubClient = pub;
