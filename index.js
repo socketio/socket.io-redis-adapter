@@ -53,7 +53,11 @@ function adapter(uri, opts){
   
   if (!pub) pub = createClient();
   if (!sub) sub = createClient({ return_buffers: true });
-  
+
+  if (!sub.options.return_buffers) {
+    console.warn('the sub client was not initalized with return_buffers option set to true');
+  }
+
   var subJson = sub.duplicate({ return_buffers: false });
 
   // this server's key
