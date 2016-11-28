@@ -62,6 +62,12 @@ that a regular `Adapter` does not
 
 Returns the list of client IDs connected to `rooms` across all nodes. See [Namespace#clients(fn:Function)](https://github.com/socketio/socket.io#namespaceclientsfnfunction)
 
+### RedisAdapter#setCustomClientHook(fn:Function)
+
+Sets a custom hook on the RedisAdapter#clients call, so that its callback
+provides custom data related to a client in addition to the array of client IDs.
+The input function takes a single argument, clientID.
+
 ## Client error handling
 
 Access the `pubClient` and `subClient` properties of the
