@@ -143,6 +143,51 @@ var adapter = require('../');
       });
     });
 
+    it('broadcasts to multiple rooms at a time', function(done){
+      create(function(server1, client1){
+        create(function(server2, client2){
+          create(function(server3, client3){
+            server1.on('connection', function(c1){
+              c1.join('foo');
+              c1.join('bar');
+            });
+
+            server2.on('connection', function(c2){
+              // does not join, performs broadcast
+              c2.on('do broadcast', function(){
+                c2.broadcast.to('foo').to('bar').emit('broadcast');
+              });
+            });
+
+            server3.on('connection', function(c3){
+              // does not join, signals broadcast
+              client2.emit('do broadcast');
+            });
+
+            var called = false;
+            client1.on('broadcast', function(){
+              if (called) return done(new Error('Called more than once'))
+              called = true;
+              setTimeout(function () {
+                client1.disconnect();
+                client2.disconnect();
+                client3.disconnect();
+                done();
+              }, 100);
+            });
+
+            client2.on('broadcast', function(){
+              throw new Error('Not in room');
+            });
+
+            client3.on('broadcast', function(){
+              throw new Error('Not in room');
+            });
+          });
+        });
+      });
+    });
+
     it('doesn\'t broadcast when using the local flag', function(done){
       create(function(server1, client1){
         create(function(server2, client2){
