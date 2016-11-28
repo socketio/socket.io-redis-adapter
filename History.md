@@ -1,4 +1,17 @@
 
+2.0.0 / 2016-11-28
+===================
+
+  * [chore] Bump socket.io-adapter to version 0.5.0 (#145)
+  * [chore] Bump debug to version 2.3.3 (#147)
+  * [chore] Bump redis to version 2.6.3 (#148)
+  * [chore] Bump async library to 2.1.4 (#62)
+  * [feature] Add a `local` flag (#119)
+  * [feature] Refactor requests between nodes and add `clientRooms` method (#146)
+  * [feature] Add an option to disable channel multiplexing (#140)
+  * [fix] receive a message only once per-emit (not per-joined rooms) (#151)
+  * [chore] Bump mocha to 3.2.0 (#152)
+
 1.1.1 / 2016-09-26
 ==================
 
