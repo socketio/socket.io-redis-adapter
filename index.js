@@ -281,11 +281,8 @@ function adapter(uri, opts){
     if (!(remote || (opts && opts.flags && opts.flags.local))) {
       var self = this;
       var msg = msgpack.encode([uid, packet, opts]);
-      if (self.withChannelMultiplexing && opts.rooms) {
-        opts.rooms.forEach(function(room) {
-          var chnRoom = self.channel + room + '#';
-          pub.publish(chnRoom, msg);
-        });
+      if (self.withChannelMultiplexing && opts.rooms && opts.rooms.length === 1) {
+        pub.publish(self.channel + opts.rooms[0] + '#', msg);
       } else {
         pub.publish(self.channel, msg);
       }
