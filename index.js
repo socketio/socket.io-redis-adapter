@@ -408,7 +408,7 @@ function adapter(uri, opts){
         return;
       }
 
-      numsub = numsub[1];
+      numsub = parseInt(numsub[1], 10);
 
       var request = JSON.stringify({
         requestid : requestid,
