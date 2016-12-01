@@ -32,7 +32,7 @@ The following options are allowed:
 - `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
 - `host`: host to connect to redis on (`localhost`)
 - `port`: port to connect to redis on (`6379`)
-- `subEvent`: optional, the redis client event name to subscribe to (`message`)
+- `subEvent`: optional, the redis client event name to subscribe to (`messageBuffer`)
 - `pubClient`: optional, the redis client to publish events on
 - `subClient`: optional, the redis client to subscribe to events on
 - `requestsTimeout`: optional, after this timeout the adapter will stop waiting from responses to request (`1000ms`)
@@ -41,12 +41,6 @@ The following options are allowed:
 If you decide to supply `pubClient` and `subClient`, make sure you use
 [node_redis](https://github.com/mranney/node_redis) as a client or one
 with an equivalent API.
-
-If you supply clients, make sure you initialized them with 
-the `return_buffers` option set to `true`.
-
-You can supply [ioredis](https://github.com/luin/ioredis) as a client
-by providing `messageBuffer` as the subEvent option.
 
 ### RedisAdapter
 
@@ -89,11 +83,9 @@ a connection string.
 var redis = require('redis').createClient;
 var adapter = require('socket.io-redis');
 var pub = redis(port, host, { auth_pass: "pwd" });
-var sub = redis(port, host, { return_buffers: true, auth_pass: "pwd" });
+var sub = redis(port, host, { auth_pass: "pwd" });
 io.adapter(adapter({ pubClient: pub, subClient: sub }));
 ```
-
-Make sure the `return_buffers` option is set to `true` for the sub client.
 
 ## Protocol
 
