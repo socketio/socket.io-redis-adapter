@@ -73,6 +73,16 @@ adapter.pubClient.on('error', function(){});
 adapter.subClient.on('error', function(){});
 ```
 
+The errors emitted from `pubClient` and `subClient` will
+also be forwarded to the adapter instance:
+
+```js
+var io = require('socket.io')(3000);
+var redis = require('socket.io-redis');
+io.adapter(redis({ host: 'localhost', port: 6379 }));
+io.of('/').adapter.on('error', function(){});
+```
+
 ## Custom client (eg: with authentication)
 
 If you need to create a redisAdapter to a redis instance
