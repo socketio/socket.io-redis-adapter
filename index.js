@@ -338,7 +338,7 @@ function adapter(uri, opts){
     debug('removing %s from %s', id, room);
 
     var self = this;
-    var hasRoom = this.rooms.hasOwnProperty(room);
+    var hasRoom = this.rooms[room];
     Adapter.prototype.del.call(this, id, room);
 
     if (this.withChannelMultiplexing && hasRoom && !this.rooms[room]) {
