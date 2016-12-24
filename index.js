@@ -5,7 +5,7 @@
 
 var uid2 = require('uid2');
 var redis = require('redis').createClient;
-var msgpack = require('msgpack-js');
+var msgpack = require('msgpack-lite');
 var Adapter = require('socket.io-adapter');
 var debug = require('debug')('socket.io-redis');
 var async = require('async');
@@ -47,22 +47,22 @@ function adapter(uri, opts){
   var sub = opts.subClient;
 
   var prefix = opts.key || 'socket.io';
-  var subEvent = opts.subEvent || 'message';
+  var subEvent = opts.subEvent || 'messageBuffer';
   var requestsTimeout = opts.requestsTimeout || 1000;
   var withChannelMultiplexing = false !== opts.withChannelMultiplexing;
 
   // init clients if needed
-  function createClient(redis_opts) {
+  function createClient() {
     if (uri) {
       // handle uri string
-      return redis(uri, redis_opts);
+      return redis(uri, opts);
     } else {
-      return redis(opts.port, opts.host, redis_opts);
+      return redis(opts);
     }
   }
 
   if (!pub) pub = createClient();
-  if (!sub) sub = createClient({ return_buffers: true });
+  if (!sub) sub = createClient();
 
   // this server's key
   var uid = uid2(6);
@@ -106,6 +106,12 @@ function adapter(uri, opts){
     });
 
     sub.on(subEvent, this.onmessage.bind(this));
+
+    function onError(err) {
+      self.emit('error', err);
+    }
+    pub.on('error', onError);
+    sub.on('error', onError);
   }
 
   /**

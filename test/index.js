@@ -12,10 +12,7 @@ var adapter = require('../');
       var redis = require('redis').createClient;
       var srv = http();
       var sio = io(srv);
-      sio.adapter(adapter({
-        pubClient: redis(),
-        subClient: redis(null, null, { return_buffers: true })
-      }));
+      sio.adapter(adapter());
       srv.listen(function(err){
         if (err) throw err; // abort tests
         if ('function' == typeof nsp) {
@@ -32,12 +29,9 @@ var adapter = require('../');
   {
     name: 'socket.io-redis without channel multiplexing',
     create: function create(nsp, fn){
-      var redis = require('redis').createClient;
       var srv = http();
       var sio = io(srv);
       sio.adapter(adapter({
-        pubClient: redis(),
-        subClient: redis(null, null, { return_buffers: true }),
         withChannelMultiplexing: false
       }));
       srv.listen(function(err){
@@ -61,8 +55,7 @@ var adapter = require('../');
       var sio = io(srv);
       sio.adapter(adapter({
         pubClient: redis(),
-        subClient: redis(null, null, { return_buffers: true }),
-        subEvent: 'messageBuffer'
+        subClient: redis(),
       }));
       srv.listen(function(err){
         if (err) throw err; // abort tests
