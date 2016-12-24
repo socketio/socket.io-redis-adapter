@@ -313,15 +313,19 @@ function adapter(uri, opts) {
       if (fn) fn(null);
       return;
     }
+
     var channel = this.channel + room + '#';
-    sub.subscribe(channel, function(err){
+
+    function onSubscribe(err) {
       if (err) {
         self.emit('error', err);
         if (fn) fn(err);
         return;
       }
       if (fn) fn(null);
-    });
+    }
+
+    sub.subscribe(channel, onSubscribe);
   };
 
   /**
@@ -342,14 +346,17 @@ function adapter(uri, opts) {
 
     if (this.withChannelMultiplexing && hasRoom && !this.rooms[room]) {
       var channel = this.channel + room + '#';
-      sub.unsubscribe(channel, function(err){
+
+      function onUnsubscribe(err) {
         if (err) {
           self.emit('error', err);
           if (fn) fn(err);
           return;
         }
         if (fn) fn(null);
-      });
+      }
+
+      sub.unsubscribe(channel, onUnsubscribe);
     } else {
       if (fn) process.nextTick(fn.bind(null, null));
     }
