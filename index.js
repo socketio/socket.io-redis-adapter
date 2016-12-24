@@ -33,7 +33,7 @@ var requestTypes = {
  * @api public
  */
 
-function adapter(uri, opts){
+function adapter(uri, opts) {
   opts = opts || {};
 
   // handle options only
@@ -285,12 +285,11 @@ function adapter(uri, opts){
   Redis.prototype.broadcast = function(packet, opts, remote){
     packet.nsp = this.nsp.name;
     if (!(remote || (opts && opts.flags && opts.flags.local))) {
-      var self = this;
       var msg = msgpack.encode([uid, packet, opts]);
-      if (self.withChannelMultiplexing && opts.rooms && opts.rooms.length === 1) {
-        pub.publish(self.channel + opts.rooms[0] + '#', msg);
+      if (this.withChannelMultiplexing && opts.rooms && opts.rooms.length === 1) {
+        pub.publish(this.channel + opts.rooms[0] + '#', msg);
       } else {
-        pub.publish(self.channel, msg);
+        pub.publish(this.channel, msg);
       }
     }
     Adapter.prototype.broadcast.call(this, packet, opts);
