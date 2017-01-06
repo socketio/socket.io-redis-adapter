@@ -242,6 +242,22 @@ function adapter(uri, opts) {
         socket.join(request.room, sendAck);
         break;
 
+      case requestTypes.remoteLeave:
+
+        var socket = this.nsp.connected[request.sid];
+        if (!socket) { return; }
+
+        function sendAck(){
+          var response = JSON.stringify({
+            requestid: request.requestid
+          });
+
+          pub.publish(self.responseChannel, response);
+        }
+
+        socket.leave(request.room, sendAck);
+        break;
+
       default:
         debug('ignoring unknown request type: %s', request.type);
     }
@@ -316,6 +332,7 @@ function adapter(uri, opts) {
         break;
 
       case requestTypes.remoteJoin:
+      case requestTypes.remoteLeave:
         clearTimeout(request.timeout);
         if (request.callback) process.nextTick(request.callback.bind(null, null));
         delete self.requests[request.requestid];
@@ -624,6 +641,49 @@ function adapter(uri, opts) {
 
     self.requests[requestid] = {
       type: requestTypes.remoteJoin,
+      callback: fn,
+      timeout: timeout
+    };
+
+    pub.publish(self.requestChannel, request);
+  };
+
+  /**
+   * Makes the socket with the given id leave the room
+   *
+   * @param {String} socket id
+   * @param {String} room name
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.remoteLeave = function(id, room, fn){
+
+    var self = this;
+    var requestid = uid2(6);
+
+    var socket = this.nsp.connected[id];
+    if (socket) {
+      socket.leave(room);
+      if (fn) process.nextTick(fn.bind(null, null));
+      return;
+    }
+
+    var request = JSON.stringify({
+      requestid : requestid,
+      type: requestTypes.remoteLeave,
+      sid: id,
+      room: room
+    });
+
+    // if there is no response for x second, return result
+    var timeout = setTimeout(function() {
+      if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for remoteLeave response')));
+      delete self.requests[requestid];
+    }, self.requestsTimeout);
+
+    self.requests[requestid] = {
+      type: requestTypes.remoteLeave,
       callback: fn,
       timeout: timeout
     };

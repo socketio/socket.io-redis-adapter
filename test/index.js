@@ -218,6 +218,17 @@ var socket1, socket2, socket3;
           done();
         });
       });
+
+      it('makes a given socket leave a room', function(done){
+        socket1.join('woot3', function(){
+          namespace3.adapter.remoteLeave(socket1.id, 'woot3', function(err){
+            var rooms = Object.keys(socket1.rooms);
+            expect(rooms).to.have.length(1);
+            expect(rooms).not.to.contain('woot3');
+            done();
+          });
+        });
+      });
     });
   });
 });
