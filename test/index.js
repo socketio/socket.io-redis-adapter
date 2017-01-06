@@ -52,14 +52,16 @@ var socket1, socket2, socket3;
     });
 
     it('broadcasts to rooms', function(done){
-      socket1.join('woot');
+      function test(){
+        client2.emit('do broadcast');
+      }
+
+      socket1.join('woot', test);
 
       // does not join, performs broadcast
       socket2.on('do broadcast', function(){
         socket2.broadcast.to('woot').emit('broadcast');
       });
-
-      client2.emit('do broadcast');
 
       client1.on('broadcast', function(){
         setTimeout(done, 100);
@@ -75,14 +77,17 @@ var socket1, socket2, socket3;
     });
 
     it('broadcasts to multiple rooms at a time', function(done){
-      socket1.join('foo');
-      socket1.join('bar');
+      function test(){
+        client2.emit('do broadcast');
+      }
+
+      socket1.join('foo', function(){
+        socket1.join('bar', test);
+      });
 
       socket2.on('do broadcast', function(){
         socket2.broadcast.to('foo').to('bar').emit('broadcast');
       });
-
-      client2.emit('do broadcast');
 
       var called = false;
       client1.on('broadcast', function(){
@@ -101,14 +106,17 @@ var socket1, socket2, socket3;
     });
 
     it('doesn\'t broadcast when using the local flag', function(done){
-      socket1.join('woot');
-      socket2.join('woot');
+      function test(){
+        client2.emit('do broadcast');
+      }
+
+      socket1.join('woot', function(){
+        socket2.join('woot', test);
+      });
 
       socket2.on('do broadcast', function(){
         namespace2.local.to('woot').emit('local broadcast');
       });
-
-      client2.emit('do broadcast');
 
       client1.on('local broadcast', function(){
         throw new Error('Not in local server');
