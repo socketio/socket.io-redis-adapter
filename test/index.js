@@ -209,6 +209,15 @@ var socket1, socket2, socket3;
           });
         });
       });
+
+      it('makes a given socket join a room', function(done){
+        namespace3.adapter.remoteJoin(socket1.id, 'woot3', function(err){
+          var rooms = Object.keys(socket1.rooms);
+          expect(rooms).to.have.length(2);
+          expect(rooms).to.contain('woot3');
+          done();
+        });
+      });
     });
   });
 });
