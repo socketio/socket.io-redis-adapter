@@ -229,6 +229,19 @@ var socket1, socket2, socket3;
           });
         });
       });
+
+      it('sends a custom request', function(done){
+        namespace1.adapter.customHook = function myCustomHook(data){
+          expect(data).to.be('hello');
+          return this.uid;
+        }
+
+        namespace3.adapter.customRequest('hello', function(err, replies){
+          expect(replies).to.have.length(3);
+          expect(replies).to.contain(namespace1.adapter.uid);
+          done();
+        });
+      });
     });
   });
 });
@@ -286,5 +299,8 @@ function cleanup(done){
   namespace1.server.close();
   namespace2.server.close();
   namespace3.server.close();
+  namespace1.adapter.subClient.end(false);
+  namespace2.adapter.subClient.end(false);
+  namespace3.adapter.subClient.end(false);
   done();
 }

@@ -90,6 +90,7 @@ function adapter(uri, opts) {
     this.requestChannel = prefix + '-request#' + this.nsp.name + '#';
     this.responseChannel = prefix + '-response#' + this.nsp.name + '#';
     this.requests = {};
+    this.customHook = function(){ return null; }
 
     if (String.prototype.startsWith) {
       this.channelMatches = function (messageChannel, subscribedChannel) {
@@ -258,6 +259,17 @@ function adapter(uri, opts) {
         socket.leave(request.room, sendAck);
         break;
 
+      case requestTypes.customRequest:
+        var data = this.customHook(request.data);
+
+        var response = JSON.stringify({
+          requestid: request.requestid,
+          data: data
+        });
+
+        pub.publish(self.responseChannel, response);
+        break;
+
       default:
         debug('ignoring unknown request type: %s', request.type);
     }
@@ -336,6 +348,18 @@ function adapter(uri, opts) {
         clearTimeout(request.timeout);
         if (request.callback) process.nextTick(request.callback.bind(null, null));
         delete self.requests[request.requestid];
+        break;
+
+      case requestTypes.customRequest:
+        request.msgCount++;
+
+        request.replies.push(response.data);
+
+        if (request.msgCount === request.numsub) {
+          clearTimeout(request.timeout);
+          if (request.callback) process.nextTick(request.callback.bind(null, null, request.replies));
+          delete self.requests[request.requestid];
+        }
         break;
 
       default:
@@ -689,6 +713,58 @@ function adapter(uri, opts) {
     };
 
     pub.publish(self.requestChannel, request);
+  };
+
+  /**
+   * Sends a new custom request to other nodes
+   *
+   * @param {Object} data (no binary)
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.customRequest = function(data, fn){
+    if (typeof data === 'function'){
+      fn = data;
+      data = null;
+    }
+
+    var self = this;
+    var requestid = uid2(6);
+
+    pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+
+      numsub = parseInt(numsub[1], 10);
+
+      var request = JSON.stringify({
+        requestid : requestid,
+        type: requestTypes.customRequest,
+        data: data
+      });
+
+      // if there is no response for x second, return result
+      var timeout = setTimeout(function() {
+        var request = self.requests[requestid];
+        if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for customRequest response'), request.replies));
+        delete self.requests[requestid];
+      }, self.requestsTimeout);
+
+      self.requests[requestid] = {
+        type: requestTypes.customRequest,
+        numsub: numsub,
+        msgCount: 0,
+        replies: [],
+        callback: fn,
+        timeout: timeout
+      };
+
+      pub.publish(self.requestChannel, request);
+    });
   };
 
   Redis.uid = uid;
