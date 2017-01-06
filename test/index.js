@@ -194,6 +194,22 @@ var socket1, socket2, socket3;
         });
       });
     });
+
+    describe('requests', function(){
+
+      it('returns all rooms accross several nodes', function(done){
+        socket1.join('woot1', function () {
+          namespace1.adapter.allRooms(function(err, rooms){
+            expect(rooms).to.have.length(4);
+            expect(rooms).to.contain(socket1.id);
+            expect(rooms).to.contain(socket2.id);
+            expect(rooms).to.contain(socket3.id);
+            expect(rooms).to.contain('woot1');
+            done();
+          });
+        });
+      });
+    });
   });
 });
 

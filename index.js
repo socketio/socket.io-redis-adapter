@@ -23,6 +23,10 @@ module.exports = adapter;
 var requestTypes = {
   clients: 0,
   clientRooms: 1,
+  allRooms: 2,
+  remoteJoin: 3,
+  remoteLeave: 4,
+  customRequest: 5,
 };
 
 /**
@@ -212,6 +216,16 @@ function adapter(uri, opts) {
         });
         break;
 
+      case requestTypes.allRooms:
+
+        var response = JSON.stringify({
+          requestid: request.requestid,
+          rooms: Object.keys(this.rooms)
+        });
+
+        pub.publish(self.responseChannel, response);
+        break;
+
       default:
         debug('ignoring unknown request type: %s', request.type);
     }
@@ -266,6 +280,23 @@ function adapter(uri, opts) {
         clearTimeout(request.timeout);
         if (request.callback) process.nextTick(request.callback.bind(null, null, response.rooms));
         delete self.requests[request.requestid];
+        break;
+
+      case requestTypes.allRooms:
+        request.msgCount++;
+
+        // ignore if response does not contain 'rooms' key
+        if(!response.rooms || !Array.isArray(response.rooms)) return;
+
+        for(var i = 0; i < response.rooms.length; i++){
+          request.rooms[response.rooms[i]] = true;
+        }
+
+        if (request.msgCount === request.numsub) {
+          clearTimeout(request.timeout);
+          if (request.callback) process.nextTick(request.callback.bind(null, null, Object.keys(request.rooms)));
+          delete self.requests[request.requestid];
+        }
         break;
 
       default:
@@ -487,6 +518,52 @@ function adapter(uri, opts) {
     };
 
     pub.publish(self.requestChannel, request);
+  };
+
+  /**
+   * Gets the list of all rooms (accross every node)
+   *
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.allRooms = function(fn){
+
+    var self = this;
+    var requestid = uid2(6);
+
+    pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+
+      numsub = parseInt(numsub[1], 10);
+
+      var request = JSON.stringify({
+        requestid : requestid,
+        type: requestTypes.allRooms
+      });
+
+      // if there is no response for x second, return result
+      var timeout = setTimeout(function() {
+        var request = self.requests[requestid];
+        if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for allRooms response'), Object.keys(request.rooms)));
+        delete self.requests[requestid];
+      }, self.requestsTimeout);
+
+      self.requests[requestid] = {
+        type: requestTypes.allRooms,
+        numsub: numsub,
+        msgCount: 0,
+        rooms: {},
+        callback: fn,
+        timeout: timeout
+      };
+
+      pub.publish(self.requestChannel, request);
+    });
   };
 
   Redis.uid = uid;
