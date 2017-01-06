@@ -5,355 +5,242 @@ var ioc = require('socket.io-client');
 var expect = require('expect.js');
 var adapter = require('../');
 
+var ioredis = require('ioredis').createClient;
+
+var namespace1, namespace2, namespace3;
+var client1, client2, client3;
+var socket1, socket2, socket3;
+
 [
   {
-    name: 'socket.io-redis',
-    create: function create(nsp, fn){
-      var redis = require('redis').createClient;
-      var srv = http();
-      var sio = io(srv);
-      sio.adapter(adapter());
-      srv.listen(function(err){
-        if (err) throw err; // abort tests
-        if ('function' == typeof nsp) {
-          fn = nsp;
-          nsp = '';
-        }
-        nsp = nsp || '/';
-        var addr = srv.address();
-        var url = 'http://localhost:' + addr.port + nsp;
-        fn(sio.of(nsp), ioc(url));
-      });
-    }
+    name: 'socket.io-redis'
   },
   {
     name: 'socket.io-redis without channel multiplexing',
-    create: function create(nsp, fn){
-      var srv = http();
-      var sio = io(srv);
-      sio.adapter(adapter({
-        withChannelMultiplexing: false
-      }));
-      srv.listen(function(err){
-        if (err) throw err; // abort tests
-        if ('function' == typeof nsp) {
-          fn = nsp;
-          nsp = '';
-        }
-        nsp = nsp || '/';
-        var addr = srv.address();
-        var url = 'http://localhost:' + addr.port + nsp;
-        fn(sio.of(nsp), ioc(url));
-      });
+    options: {
+      withChannelMultiplexing: false
     }
   },
   {
     name: 'socket.io-redis with ioredis',
-    create: function create(nsp, fn){
-      var redis = require('ioredis').createClient;
-      var srv = http();
-      var sio = io(srv);
-      sio.adapter(adapter({
-        pubClient: redis(),
-        subClient: redis(),
-      }));
-      srv.listen(function(err){
-        if (err) throw err; // abort tests
-        if ('function' == typeof nsp) {
-          fn = nsp;
-          nsp = '';
-        }
-        nsp = nsp || '/';
-        var addr = srv.address();
-        var url = 'http://localhost:' + addr.port + nsp;
-        fn(sio.of(nsp), ioc(url));
-      });
+    options: function () {
+      return {
+        pubClient: ioredis(),
+        subClient: ioredis()
+      }
     }
   },
 ].forEach(function (suite) {
   var name = suite.name;
-  var create = suite.create;
+  var options = suite.options;
 
   describe(name, function(){
 
+    beforeEach(init(options));
+    afterEach(cleanup);
+
     it('broadcasts', function(done){
-      create(function(server1, client1){
-        create(function(server2, client2){
-          client1.on('woot', function(a, b, c){
-            expect(a).to.eql([]);
-            expect(b).to.eql({ a: 'b' });
-            expect(Buffer.isBuffer(c)).to.be(true);
-            client1.disconnect();
-            client2.disconnect();
-            done();
-          });
-          server2.on('connection', function(c2){
-            setTimeout(function(){
-              var buf = new Buffer('asdfasdf', 'utf8');
-              c2.broadcast.emit('woot', [], { a: 'b' }, buf);
-            }, 100);
-          });
-        });
+      client1.on('woot', function(a, b, c){
+        expect(a).to.eql([]);
+        expect(b).to.eql({ a: 'b' });
+        expect(Buffer.isBuffer(c)).to.be(true);
+        done();
       });
+
+      var buf = new Buffer('asdfasdf', 'utf8');
+      socket2.broadcast.emit('woot', [], { a: 'b' }, buf);
     });
 
     it('broadcasts to rooms', function(done){
-      create(function(server1, client1){
-        create(function(server2, client2){
-          create(function(server3, client3){
-            server1.on('connection', function(c1){
-              c1.join('woot');
-            });
+      socket1.join('woot');
 
-            server2.on('connection', function(c2){
-              // does not join, performs broadcast
-              c2.on('do broadcast', function(){
-                c2.broadcast.to('woot').emit('broadcast');
-              });
-            });
+      // does not join, performs broadcast
+      socket2.on('do broadcast', function(){
+        socket2.broadcast.to('woot').emit('broadcast');
+      });
 
-            server3.on('connection', function(c3){
-              // does not join, signals broadcast
-              client2.emit('do broadcast');
-            });
+      client2.emit('do broadcast');
 
-            client1.on('broadcast', function(){
-              client1.disconnect();
-              client2.disconnect();
-              client3.disconnect();
-              setTimeout(done, 100);
-            });
+      client1.on('broadcast', function(){
+        setTimeout(done, 100);
+      });
 
-            client2.on('broadcast', function(){
-              throw new Error('Not in room');
-            });
+      client2.on('broadcast', function(){
+        throw new Error('Not in room');
+      });
 
-            client3.on('broadcast', function(){
-              throw new Error('Not in room');
-            });
-          });
-        });
+      client3.on('broadcast', function(){
+        throw new Error('Not in room');
       });
     });
 
     it('broadcasts to multiple rooms at a time', function(done){
-      create(function(server1, client1){
-        create(function(server2, client2){
-          create(function(server3, client3){
-            server1.on('connection', function(c1){
-              c1.join('foo');
-              c1.join('bar');
-            });
+      socket1.join('foo');
+      socket1.join('bar');
 
-            server2.on('connection', function(c2){
-              // does not join, performs broadcast
-              c2.on('do broadcast', function(){
-                c2.broadcast.to('foo').to('bar').emit('broadcast');
-              });
-            });
+      socket2.on('do broadcast', function(){
+        socket2.broadcast.to('foo').to('bar').emit('broadcast');
+      });
 
-            server3.on('connection', function(c3){
-              // does not join, signals broadcast
-              client2.emit('do broadcast');
-            });
+      client2.emit('do broadcast');
 
-            var called = false;
-            client1.on('broadcast', function(){
-              if (called) return done(new Error('Called more than once'))
-              called = true;
-              setTimeout(function () {
-                client1.disconnect();
-                client2.disconnect();
-                client3.disconnect();
-                done();
-              }, 100);
-            });
+      var called = false;
+      client1.on('broadcast', function(){
+        if (called) return done(new Error('Called more than once'))
+        called = true;
+        setTimeout(done, 100);
+      });
 
-            client2.on('broadcast', function(){
-              throw new Error('Not in room');
-            });
+      client2.on('broadcast', function(){
+        throw new Error('Not in room');
+      });
 
-            client3.on('broadcast', function(){
-              throw new Error('Not in room');
-            });
-          });
-        });
+      client3.on('broadcast', function(){
+        throw new Error('Not in room');
       });
     });
 
     it('doesn\'t broadcast when using the local flag', function(done){
-      create(function(server1, client1){
-        create(function(server2, client2){
-          create(function(server3, client3){
-            server1.on('connection', function(c1){
-              c1.join('woot');
-            });
+      socket1.join('woot');
+      socket2.join('woot');
 
-            server2.on('connection', function(c2){
-              c2.join('woot');
+      socket2.on('do broadcast', function(){
+        namespace2.local.to('woot').emit('local broadcast');
+      });
 
-              c2.on('do broadcast', function(){
-                server2.local.to('woot').emit('local broadcast');
-              });
-            });
+      client2.emit('do broadcast');
 
-            server3.on('connection', function(c3){
-              // does not join, signals broadcast
-              client2.emit('do broadcast');
-            });
+      client1.on('local broadcast', function(){
+        throw new Error('Not in local server');
+      });
 
-            client1.on('local broadcast', function(){
-              throw new Error('Not in local server');
-            });
+      client2.on('local broadcast', function(){
+        setTimeout(done, 100);
+      });
 
-            client2.on('local broadcast', function(){
-              client1.disconnect();
-              client2.disconnect();
-              client3.disconnect();
-              setTimeout(done, 100);
-            });
-
-            client3.on('local broadcast', function(){
-              throw new Error('Not in local server');
-            });
-          });
-        });
+      client3.on('local broadcast', function(){
+        throw new Error('Not in local server');
       });
     });
 
     it('doesn\'t broadcast to left rooms', function(done){
-      create(function(server1, client1){
-        create(function(server2, client2){
-          create(function(server3, client3){
-            server1.on('connection', function(c1){
-              c1.join('woot');
-              c1.leave('woot');
-            });
+      socket1.join('woot', function(){
+        socket1.leave('woot');
+      });
 
-            server2.on('connection', function(c2){
-              c2.on('do broadcast', function(){
-                c2.broadcast.to('woot').emit('broadcast');
+      socket2.on('do broadcast', function(){
+        socket2.broadcast.to('woot').emit('broadcast');
 
-                setTimeout(function() {
-                  client1.disconnect();
-                  client2.disconnect();
-                  client3.disconnect();
-                  done();
-                }, 100);
-              });
-            });
+        setTimeout(done, 100);
+      });
 
-            server3.on('connection', function(c3){
-              client2.emit('do broadcast');
-            });
+      client2.emit('do broadcast');
 
-            client1.on('broadcast', function(){
-              throw new Error('Not in room');
-            });
-          });
-        });
+      client1.on('broadcast', function(){
+        throw new Error('Not in room');
       });
     });
 
     it('deletes rooms upon disconnection', function(done){
-      create(function(server, client){
-        server.on('connection', function(c){
-          c.join('woot');
-          c.on('disconnect', function() {
-            expect(c.adapter.sids[c.id]).to.be.empty();
-            expect(c.adapter.rooms).to.be.empty();
-            client.disconnect();
-            done();
-          });
-          c.disconnect();
-        });
+      socket1.join('woot');
+      socket1.on('disconnect', function() {
+        expect(socket1.adapter.sids[socket1.id]).to.be.empty();
+        expect(socket1.adapter.rooms).to.be.empty();
+        client1.disconnect();
+        done();
       });
+      socket1.disconnect();
     });
 
     it('returns clients in the same room', function(done){
-      create(function(server1, client1){
-        create(function(server2, client2){
-          create(function(server3, client3){
-            var ready = 0;
-
-            server1.on('connection', function(c1){
-              c1.join('woot');
-              ready++;
-              if(ready === 3){
-                test();
-              }
-            });
-
-            server2.on('connection', function(c1){
-              c1.join('woot');
-              ready++;
-              if(ready === 3){
-                test();
-              }
-            });
-
-            server3.on('connection', function(c3){
-              ready++;
-              if(ready === 3){
-                test();
-              }
-            });
-
-            function test(){
-              setTimeout(function(){
-                server1.adapter.clients(['woot'], function(err, clients){
-                  expect(clients.length).to.eql(2);
-                  client1.disconnect();
-                  client2.disconnect();
-                  client3.disconnect();
-                  done();
-                });
-              }, 100);
-            }
-
-          });
+      function test(){
+        namespace1.adapter.clients(['woot'], function(err, clients){
+          expect(clients).to.have.length(2);
+          expect(clients).to.contain(socket1.id);
+          expect(clients).to.contain(socket2.id);
+          done();
         });
+      }
+
+      socket1.join('woot', function(){
+        socket2.join('woot', test);
       });
     });
 
     describe('rooms', function () {
       it('returns rooms of a given client', function(done){
-        create(function(server1, client1){
-          create(function(server2, client2){
-
-            server1.on('connection', function(c1){
-              c1.join('woot1', function () {
-                server1.adapter.clientRooms(c1.id, function(err, rooms){
-                  expect(rooms).to.eql([c1.id, 'woot1']);
-                  client1.disconnect();
-                  client2.disconnect();
-                  done();
-                });
-              });
-            });
-
+        socket1.join('woot1', function () {
+          namespace1.adapter.clientRooms(socket1.id, function(err, rooms){
+            expect(rooms).to.eql([socket1.id, 'woot1']);
+            done();
           });
         });
       });
 
       it('returns rooms of a given client from another node', function(done){
-        create(function(server1, client1){
-          create(function(server2, client2){
-
-            server1.on('connection', function(c1){
-              c1.join('woot2', function () {
-                server2.adapter.clientRooms(c1.id, function(err, rooms){
-                  expect(rooms).to.eql([c1.id, 'woot2']);
-                  client1.disconnect();
-                  client2.disconnect();
-                  done();
-                });
-              });
-            });
-
+        socket1.join('woot2', function () {
+          namespace2.adapter.clientRooms(socket1.id, function(err, rooms){
+            expect(rooms).to.eql([socket1.id, 'woot2']);
+            done();
           });
         });
       });
     });
   });
 });
+
+function _create(options){
+  return function create(nsp, fn){
+    var srv = http();
+    var sio = io(srv);
+    sio.adapter(adapter(typeof options === 'function' ? options() : options));
+    srv.listen(function(err){
+      if (err) throw err; // abort tests
+      if ('function' == typeof nsp) {
+        fn = nsp;
+        nsp = '';
+      }
+      nsp = nsp || '/';
+      var addr = srv.address();
+      var url = 'http://localhost:' + addr.port + nsp;
+
+      var namespace = sio.of(nsp);
+      var client = ioc(url, { reconnect: false });
+
+      namespace.on('connection', function(socket){
+        fn(namespace, client, socket);
+      })
+    });
+  }
+}
+
+function init(options){
+  var create = _create(options);
+  return function(done){
+    create(function(_namespace1, _client1, _socket1){
+      create(function(_namespace2, _client2, _socket2){
+        create(function(_namespace3, _client3, _socket3){
+          namespace1 = _namespace1;
+          namespace2 = _namespace2;
+          namespace3 = _namespace3;
+
+          client1 = _client1;
+          client2 = _client2;
+          client3 = _client3;
+
+          socket1 = _socket1;
+          socket2 = _socket2;
+          socket3 = _socket3;
+          done();
+        });
+      });
+    });
+  };
+}
+
+function cleanup(done){
+  namespace1.server.close();
+  namespace2.server.close();
+  namespace3.server.close();
+  done();
+}
