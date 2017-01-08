@@ -1,4 +1,15 @@
 
+3.0.0 / 2017-01-08
+===================
+
+  * [feature] Add some helper methods (#168)
+  * [test] Add newer nodejs versions in Travis (#167)
+  * [test] simplify tests by using beforeEach/afterEach methods (#166)
+  * [perf] Micro-optimisations (#163)
+  * [feature] Forward errors from pub/sub clients to the adapter (#160)
+  * [chore] Replace msgpack with msgpack-lite (#156)
+  * [feature] Make subEvent default to `messageBuffer` (#157)
+
 2.0.1 / 2016-12-08
 ===================
 
