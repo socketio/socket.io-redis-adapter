@@ -194,6 +194,55 @@ var socket1, socket2, socket3;
         });
       });
     });
+
+    describe('requests', function(){
+
+      it('returns all rooms accross several nodes', function(done){
+        socket1.join('woot1', function () {
+          namespace1.adapter.allRooms(function(err, rooms){
+            expect(rooms).to.have.length(4);
+            expect(rooms).to.contain(socket1.id);
+            expect(rooms).to.contain(socket2.id);
+            expect(rooms).to.contain(socket3.id);
+            expect(rooms).to.contain('woot1');
+            done();
+          });
+        });
+      });
+
+      it('makes a given socket join a room', function(done){
+        namespace3.adapter.remoteJoin(socket1.id, 'woot3', function(err){
+          var rooms = Object.keys(socket1.rooms);
+          expect(rooms).to.have.length(2);
+          expect(rooms).to.contain('woot3');
+          done();
+        });
+      });
+
+      it('makes a given socket leave a room', function(done){
+        socket1.join('woot3', function(){
+          namespace3.adapter.remoteLeave(socket1.id, 'woot3', function(err){
+            var rooms = Object.keys(socket1.rooms);
+            expect(rooms).to.have.length(1);
+            expect(rooms).not.to.contain('woot3');
+            done();
+          });
+        });
+      });
+
+      it('sends a custom request', function(done){
+        namespace1.adapter.customHook = function myCustomHook(data){
+          expect(data).to.be('hello');
+          return this.uid;
+        }
+
+        namespace3.adapter.customRequest('hello', function(err, replies){
+          expect(replies).to.have.length(3);
+          expect(replies).to.contain(namespace1.adapter.uid);
+          done();
+        });
+      });
+    });
   });
 });
 
@@ -250,5 +299,8 @@ function cleanup(done){
   namespace1.server.close();
   namespace2.server.close();
   namespace3.server.close();
+  namespace1.adapter.subClient.end(false);
+  namespace2.adapter.subClient.end(false);
+  namespace3.adapter.subClient.end(false);
   done();
 }

@@ -23,6 +23,10 @@ module.exports = adapter;
 var requestTypes = {
   clients: 0,
   clientRooms: 1,
+  allRooms: 2,
+  remoteJoin: 3,
+  remoteLeave: 4,
+  customRequest: 5,
 };
 
 /**
@@ -86,6 +90,7 @@ function adapter(uri, opts) {
     this.requestChannel = prefix + '-request#' + this.nsp.name + '#';
     this.responseChannel = prefix + '-response#' + this.nsp.name + '#';
     this.requests = {};
+    this.customHook = function(){ return null; }
 
     if (String.prototype.startsWith) {
       this.channelMatches = function (messageChannel, subscribedChannel) {
@@ -212,6 +217,59 @@ function adapter(uri, opts) {
         });
         break;
 
+      case requestTypes.allRooms:
+
+        var response = JSON.stringify({
+          requestid: request.requestid,
+          rooms: Object.keys(this.rooms)
+        });
+
+        pub.publish(self.responseChannel, response);
+        break;
+
+      case requestTypes.remoteJoin:
+
+        var socket = this.nsp.connected[request.sid];
+        if (!socket) { return; }
+
+        function sendAck(){
+          var response = JSON.stringify({
+            requestid: request.requestid
+          });
+
+          pub.publish(self.responseChannel, response);
+        }
+
+        socket.join(request.room, sendAck);
+        break;
+
+      case requestTypes.remoteLeave:
+
+        var socket = this.nsp.connected[request.sid];
+        if (!socket) { return; }
+
+        function sendAck(){
+          var response = JSON.stringify({
+            requestid: request.requestid
+          });
+
+          pub.publish(self.responseChannel, response);
+        }
+
+        socket.leave(request.room, sendAck);
+        break;
+
+      case requestTypes.customRequest:
+        var data = this.customHook(request.data);
+
+        var response = JSON.stringify({
+          requestid: request.requestid,
+          data: data
+        });
+
+        pub.publish(self.responseChannel, response);
+        break;
+
       default:
         debug('ignoring unknown request type: %s', request.type);
     }
@@ -266,6 +324,42 @@ function adapter(uri, opts) {
         clearTimeout(request.timeout);
         if (request.callback) process.nextTick(request.callback.bind(null, null, response.rooms));
         delete self.requests[request.requestid];
+        break;
+
+      case requestTypes.allRooms:
+        request.msgCount++;
+
+        // ignore if response does not contain 'rooms' key
+        if(!response.rooms || !Array.isArray(response.rooms)) return;
+
+        for(var i = 0; i < response.rooms.length; i++){
+          request.rooms[response.rooms[i]] = true;
+        }
+
+        if (request.msgCount === request.numsub) {
+          clearTimeout(request.timeout);
+          if (request.callback) process.nextTick(request.callback.bind(null, null, Object.keys(request.rooms)));
+          delete self.requests[request.requestid];
+        }
+        break;
+
+      case requestTypes.remoteJoin:
+      case requestTypes.remoteLeave:
+        clearTimeout(request.timeout);
+        if (request.callback) process.nextTick(request.callback.bind(null, null));
+        delete self.requests[request.requestid];
+        break;
+
+      case requestTypes.customRequest:
+        request.msgCount++;
+
+        request.replies.push(response.data);
+
+        if (request.msgCount === request.numsub) {
+          clearTimeout(request.timeout);
+          if (request.callback) process.nextTick(request.callback.bind(null, null, request.replies));
+          delete self.requests[request.requestid];
+        }
         break;
 
       default:
@@ -487,6 +581,190 @@ function adapter(uri, opts) {
     };
 
     pub.publish(self.requestChannel, request);
+  };
+
+  /**
+   * Gets the list of all rooms (accross every node)
+   *
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.allRooms = function(fn){
+
+    var self = this;
+    var requestid = uid2(6);
+
+    pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+
+      numsub = parseInt(numsub[1], 10);
+
+      var request = JSON.stringify({
+        requestid : requestid,
+        type: requestTypes.allRooms
+      });
+
+      // if there is no response for x second, return result
+      var timeout = setTimeout(function() {
+        var request = self.requests[requestid];
+        if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for allRooms response'), Object.keys(request.rooms)));
+        delete self.requests[requestid];
+      }, self.requestsTimeout);
+
+      self.requests[requestid] = {
+        type: requestTypes.allRooms,
+        numsub: numsub,
+        msgCount: 0,
+        rooms: {},
+        callback: fn,
+        timeout: timeout
+      };
+
+      pub.publish(self.requestChannel, request);
+    });
+  };
+
+  /**
+   * Makes the socket with the given id join the room
+   *
+   * @param {String} socket id
+   * @param {String} room name
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.remoteJoin = function(id, room, fn){
+
+    var self = this;
+    var requestid = uid2(6);
+
+    var socket = this.nsp.connected[id];
+    if (socket) {
+      socket.join(room);
+      if (fn) process.nextTick(fn.bind(null, null));
+      return;
+    }
+
+    var request = JSON.stringify({
+      requestid : requestid,
+      type: requestTypes.remoteJoin,
+      sid: id,
+      room: room
+    });
+
+    // if there is no response for x second, return result
+    var timeout = setTimeout(function() {
+      if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for remoteJoin response')));
+      delete self.requests[requestid];
+    }, self.requestsTimeout);
+
+    self.requests[requestid] = {
+      type: requestTypes.remoteJoin,
+      callback: fn,
+      timeout: timeout
+    };
+
+    pub.publish(self.requestChannel, request);
+  };
+
+  /**
+   * Makes the socket with the given id leave the room
+   *
+   * @param {String} socket id
+   * @param {String} room name
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.remoteLeave = function(id, room, fn){
+
+    var self = this;
+    var requestid = uid2(6);
+
+    var socket = this.nsp.connected[id];
+    if (socket) {
+      socket.leave(room);
+      if (fn) process.nextTick(fn.bind(null, null));
+      return;
+    }
+
+    var request = JSON.stringify({
+      requestid : requestid,
+      type: requestTypes.remoteLeave,
+      sid: id,
+      room: room
+    });
+
+    // if there is no response for x second, return result
+    var timeout = setTimeout(function() {
+      if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for remoteLeave response')));
+      delete self.requests[requestid];
+    }, self.requestsTimeout);
+
+    self.requests[requestid] = {
+      type: requestTypes.remoteLeave,
+      callback: fn,
+      timeout: timeout
+    };
+
+    pub.publish(self.requestChannel, request);
+  };
+
+  /**
+   * Sends a new custom request to other nodes
+   *
+   * @param {Object} data (no binary)
+   * @param {Function} callback
+   * @api public
+   */
+
+  Redis.prototype.customRequest = function(data, fn){
+    if (typeof data === 'function'){
+      fn = data;
+      data = null;
+    }
+
+    var self = this;
+    var requestid = uid2(6);
+
+    pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+
+      numsub = parseInt(numsub[1], 10);
+
+      var request = JSON.stringify({
+        requestid : requestid,
+        type: requestTypes.customRequest,
+        data: data
+      });
+
+      // if there is no response for x second, return result
+      var timeout = setTimeout(function() {
+        var request = self.requests[requestid];
+        if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for customRequest response'), request.replies));
+        delete self.requests[requestid];
+      }, self.requestsTimeout);
+
+      self.requests[requestid] = {
+        type: requestTypes.customRequest,
+        numsub: numsub,
+        msgCount: 0,
+        replies: [],
+        callback: fn,
+        timeout: timeout
+      };
+
+      pub.publish(self.requestChannel, request);
+    });
   };
 
   Redis.uid = uid;
