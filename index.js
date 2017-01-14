@@ -401,9 +401,11 @@ function adapter(uri, opts) {
   Redis.prototype.add = function(id, room, fn){
     debug('adding %s to %s ', id, room);
     var self = this;
+    // subscribe only once per room
+    var alreadyHasRoom = this.rooms.hasOwnProperty(room);
     Adapter.prototype.add.call(this, id, room);
 
-    if (!this.withChannelMultiplexing) {
+    if (!this.withChannelMultiplexing || alreadyHasRoom) {
       if (fn) fn(null);
       return;
     }
