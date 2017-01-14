@@ -299,8 +299,8 @@ function cleanup(done){
   namespace1.server.close();
   namespace2.server.close();
   namespace3.server.close();
-  namespace1.adapter.subClient.end(false);
-  namespace2.adapter.subClient.end(false);
-  namespace3.adapter.subClient.end(false);
+  try { namespace1.adapter.subClient.end(false); } catch (e) {}
+  try { namespace2.adapter.subClient.end(false); } catch (e) {}
+  try { namespace3.adapter.subClient.end(false); } catch (e) {}
   done();
 }
