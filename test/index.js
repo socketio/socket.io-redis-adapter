@@ -301,6 +301,7 @@ function cleanup(done){
   namespace1.server.close();
   namespace2.server.close();
   namespace3.server.close();
+  // handle 'Connection is closed' errors
   namespace1.adapter.on('error', noop);
   namespace2.adapter.on('error', noop);
   namespace3.adapter.on('error', noop);
