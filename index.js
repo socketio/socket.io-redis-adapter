@@ -265,16 +265,7 @@ function adapter(uri, opts) {
         var socket = this.nsp.connected[request.sid];
         if (!socket) { return; }
 
-        function sendAck(){
-          var response = JSON.stringify({
-            requestid: request.requestid
-          });
-
-          pub.publish(self.responseChannel, response);
-        }
-
         socket.disconnect(request.close);
-        sendAck();
         break;
 
       case requestTypes.customRequest:
