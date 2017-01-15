@@ -115,7 +115,7 @@ io.adapter.remoteLeave('<my-id>', 'room1', function (err) {
 Makes the socket with the given id to get disconnected. If `close` is set to true, it also closes the underlying socket. The callback will be called once the socket was disconnected, or with an `err` argument if the socket was not found.
 
 ```js
-io.adapter.remoteLeave('<my-id>', 'room1', function (err) {
+io.adapter.remoteDisconnect('<my-id>', true, function (err) {
   if (err) { /* unknown id */ }
   // success
 });
