@@ -242,6 +242,15 @@ var socket1, socket2, socket3;
           done();
         });
       });
+
+      it('makes a given socket disconnect', function(done){
+        client1.on('disconnect', function(err){
+          expect(err).to.be('io server disconnect');
+          done();
+        });
+
+        namespace2.adapter.remoteDisconnect(socket1.id, false);
+      });
     });
   });
 });
