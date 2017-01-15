@@ -266,6 +266,12 @@ function adapter(uri, opts) {
         if (!socket) { return; }
 
         socket.disconnect(request.close);
+
+        var response = JSON.stringify({
+          requestid: request.requestid
+        });
+
+        pub.publish(self.responseChannel, response);
         break;
 
       case requestTypes.customRequest:
