@@ -295,10 +295,15 @@ function init(options){
   };
 }
 
+function noop(){}
+
 function cleanup(done){
   namespace1.server.close();
   namespace2.server.close();
   namespace3.server.close();
+  namespace1.adapter.on('error', noop);
+  namespace2.adapter.on('error', noop);
+  namespace3.adapter.on('error', noop);
   namespace1.adapter.subClient.quit();
   namespace2.adapter.subClient.quit();
   namespace3.adapter.subClient.quit();
