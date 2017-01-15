@@ -27,6 +27,7 @@ var requestTypes = {
   remoteJoin: 3,
   remoteLeave: 4,
   customRequest: 5,
+  remoteDisconnect: 6
 };
 
 /**
@@ -259,6 +260,20 @@ function adapter(uri, opts) {
         socket.leave(request.room, sendAck);
         break;
 
+      case requestTypes.remoteDisconnect:
+
+        var socket = this.nsp.connected[request.sid];
+        if (!socket) { return; }
+
+        socket.disconnect(request.close);
+
+        var response = JSON.stringify({
+          requestid: request.requestid
+        });
+
+        pub.publish(self.responseChannel, response);
+        break;
+
       case requestTypes.customRequest:
         var data = this.customHook(request.data);
 
@@ -345,6 +360,7 @@ function adapter(uri, opts) {
 
       case requestTypes.remoteJoin:
       case requestTypes.remoteLeave:
+      case requestTypes.remoteDisconnect:
         clearTimeout(request.timeout);
         if (request.callback) process.nextTick(request.callback.bind(null, null));
         delete self.requests[request.requestid];
@@ -710,6 +726,46 @@ function adapter(uri, opts) {
 
     self.requests[requestid] = {
       type: requestTypes.remoteLeave,
+      callback: fn,
+      timeout: timeout
+    };
+
+    pub.publish(self.requestChannel, request);
+  };
+
+  /**
+   * Makes the socket with the given id to be disconnected forcefully
+   * @param {String} socket id
+   * @param {Boolean} close if `true`, closes the underlying connection
+   * @param {Function} callback
+   */
+
+  Redis.prototype.remoteDisconnect = function(id, close, fn) {
+    var self = this;
+    var requestid = uid2(6);
+
+    var socket = this.nsp.connected[id];
+    if(socket) {
+      socket.disconnect(close);
+      if (fn) process.nextTick(fn.bind(null, null));
+      return;
+    }
+
+    var request = JSON.stringify({
+      requestid : requestid,
+      type: requestTypes.remoteDisconnect,
+      sid: id,
+      close: close
+    });
+
+    // if there is no response for x second, return result
+    var timeout = setTimeout(function() {
+      if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for remoteDisconnect response')));
+      delete self.requests[requestid];
+    }, self.requestsTimeout);
+
+    self.requests[requestid] = {
+      type: requestTypes.remoteDisconnect,
       callback: fn,
       timeout: timeout
     };
