@@ -127,8 +127,8 @@ Sends a request to every nodes, that will respond through the `customHook` metho
 
 ```js
 // on every node
-io.adapter.customHook = function (data) {
-  return 'hello ' + data;
+io.adapter.customHook = function (data, cb) {
+  cb('hello ' + data);
 }
 
 // then

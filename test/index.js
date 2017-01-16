@@ -231,9 +231,9 @@ var socket1, socket2, socket3;
       });
 
       it('sends a custom request', function(done){
-        namespace1.adapter.customHook = function myCustomHook(data){
+        namespace1.adapter.customHook = function myCustomHook(data, cb){
           expect(data).to.be('hello');
-          return this.uid;
+          cb(this.uid);
         }
 
         namespace3.adapter.customRequest('hello', function(err, replies){

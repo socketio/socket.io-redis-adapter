@@ -91,7 +91,7 @@ function adapter(uri, opts) {
     this.requestChannel = prefix + '-request#' + this.nsp.name + '#';
     this.responseChannel = prefix + '-response#' + this.nsp.name + '#';
     this.requests = {};
-    this.customHook = function(){ return null; }
+    this.customHook = function(data, cb){ cb(null); }
 
     if (String.prototype.startsWith) {
       this.channelMatches = function (messageChannel, subscribedChannel) {
@@ -275,14 +275,16 @@ function adapter(uri, opts) {
         break;
 
       case requestTypes.customRequest:
-        var data = this.customHook(request.data);
+        this.customHook(request.data, function(data) {
 
-        var response = JSON.stringify({
-          requestid: request.requestid,
-          data: data
+          var response = JSON.stringify({
+            requestid: request.requestid,
+            data: data
+          });
+
+          pub.publish(self.responseChannel, response);
         });
 
-        pub.publish(self.responseChannel, response);
         break;
 
       default:
