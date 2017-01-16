@@ -1,4 +1,13 @@
 
+3.1.0 / 2017-01-16
+===================
+
+  * [docs] Document remoteDisconnect method (#179)
+  * [feature] Implement remoteDisconnect method (#177)
+  * [fix] Subscribe only once per room (#175)
+  * [test] Fix 'Connection is closed' errors when cleaning up tests (#178)
+  * [test] Use quit() instead of end() to close Redis connection (#176)
+
 3.0.0 / 2017-01-08
 ===================
 
