@@ -19,6 +19,10 @@
   * [chore] Replace msgpack with msgpack-lite (#156)
   * [feature] Make subEvent default to `messageBuffer` (#157)
 
+The major bump is due to #156.
+
+**Important note:** thanks to #157 the `return_buffers` option for the Redis client should not be needed anymore, in fact it might even lead to errors if it is still used (related: https://github.com/socketio/socket.io-redis/issues/185)
+
 2.0.1 / 2016-12-08
 ===================
 
