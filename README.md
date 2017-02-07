@@ -58,12 +58,18 @@ that a regular `Adapter` does not
 Returns the list of client IDs connected to `rooms` across all nodes. See [Namespace#clients(fn:Function)](https://github.com/socketio/socket.io#namespaceclientsfnfunction)
 
 ```js
-io.adapter.clients(function (err, clients) {
+io.of('/').adapter.clients(function (err, clients) {
   console.log(clients); // an array containing all connected socket ids
 });
 
-io.adapter.clients(['room1', 'room2'], function (err, clients) {
+io.of('/').adapter.clients(['room1', 'room2'], function (err, clients) {
   console.log(clients); // an array containing socket ids in 'room1' and/or 'room2'
+});
+
+// you can also use
+
+io.in('room3').clients(function (err, clients) {
+  console.log(clients); // an array containing socket ids in 'room3'
 });
 ```
 
@@ -72,7 +78,7 @@ io.adapter.clients(['room1', 'room2'], function (err, clients) {
 Returns the list of rooms the client with the given ID has joined (even on another node).
 
 ```js
-io.adapter.clientRooms('<my-id>', function (err, rooms) {
+io.of('/').adapter.clientRooms('<my-id>', function (err, rooms) {
   if (err) { /* unknown id */ }
   console.log(rooms); // an array containing every room a given id has joined.
 });
@@ -83,7 +89,7 @@ io.adapter.clientRooms('<my-id>', function (err, rooms) {
 Returns the list of all rooms.
 
 ```js
-io.adapter.allRooms(function (err, rooms) {
+io.of('/').adapter.allRooms(function (err, rooms) {
   console.log(rooms); // an array containing all rooms (accross every node)
 });
 ```
@@ -93,7 +99,7 @@ io.adapter.allRooms(function (err, rooms) {
 Makes the socket with the given id join the room. The callback will be called once the socket has joined the room, or with an `err` argument if the socket was not found.
 
 ```js
-io.adapter.remoteJoin('<my-id>', 'room1', function (err) {
+io.of('/').adapter.remoteJoin('<my-id>', 'room1', function (err) {
   if (err) { /* unknown id */ }
   // success
 });
@@ -104,7 +110,7 @@ io.adapter.remoteJoin('<my-id>', 'room1', function (err) {
 Makes the socket with the given id leave the room. The callback will be called once the socket has left the room, or with an `err` argument if the socket was not found.
 
 ```js
-io.adapter.remoteLeave('<my-id>', 'room1', function (err) {
+io.of('/').adapter.remoteLeave('<my-id>', 'room1', function (err) {
   if (err) { /* unknown id */ }
   // success
 });
@@ -115,7 +121,7 @@ io.adapter.remoteLeave('<my-id>', 'room1', function (err) {
 Makes the socket with the given id to get disconnected. If `close` is set to true, it also closes the underlying socket. The callback will be called once the socket was disconnected, or with an `err` argument if the socket was not found.
 
 ```js
-io.adapter.remoteDisconnect('<my-id>', true, function (err) {
+io.of('/').adapter.remoteDisconnect('<my-id>', true, function (err) {
   if (err) { /* unknown id */ }
   // success
 });
@@ -127,12 +133,12 @@ Sends a request to every nodes, that will respond through the `customHook` metho
 
 ```js
 // on every node
-io.adapter.customHook = function (data, cb) {
+io.of('/').adapter.customHook = function (data, cb) {
   cb('hello ' + data);
 }
 
 // then
-io.adapter.customRequest('john', function(err, replies){
+io.of('/').adapter.customRequest('john', function(err, replies){
   console.log(replies); // an array ['hello john', ...] with one element per node
 });
 ```
