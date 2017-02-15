@@ -665,8 +665,7 @@ function adapter(uri, opts) {
 
     var socket = this.nsp.connected[id];
     if (socket) {
-      socket.join(room);
-      if (fn) process.nextTick(fn.bind(null, null));
+      socket.join(room, fn);
       return;
     }
 
@@ -708,8 +707,7 @@ function adapter(uri, opts) {
 
     var socket = this.nsp.connected[id];
     if (socket) {
-      socket.leave(room);
-      if (fn) process.nextTick(fn.bind(null, null));
+      socket.leave(room, fn);
       return;
     }
 
