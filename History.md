@@ -1,4 +1,14 @@
 
+4.0.0 / 2017-02-15
+===================
+
+  * [fix] Fix remoteJoin/remoteLeave methods (#201)
+  * [docs] Update code examples in the Readme (#194)
+  * [docs] Update History.md regarding the `return_buffers` option (#189)
+  * [feature] Make customHook async (#181)
+
+The major bump is due to #181, which is an API breaking change.
+
 3.1.0 / 2017-01-16
 ===================
 
