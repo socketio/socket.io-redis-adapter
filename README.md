@@ -149,7 +149,7 @@ Make Emit With specific Sockets.
 You Can Send Message To Socket. ( Even if, another socket-server)
 
 ```js
-io.of('/').adpater.remoteJoin('<socket-id>','emit-name','emit-data',function(err){
+io.of('/').adpater.remoteEmit('<socket-id>','emit-name','emit-data',function(err){
 
 });
 ```
