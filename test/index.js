@@ -175,6 +175,15 @@ var socket1, socket2, socket3;
       });
     });
 
+    it('allows to join several rooms at once', function(done){
+      socket1.join(['room1', 'room2'], function () {
+        namespace1.adapter.clientRooms(socket1.id, function(err, rooms){
+            expect(rooms).to.eql([socket1.id, 'room1', 'room2']);
+            done();
+          });
+      });
+    });
+
     describe('rooms', function () {
       it('returns rooms of a given client', function(done){
         socket1.join('woot1', function () {
