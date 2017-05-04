@@ -233,31 +233,29 @@ function adapter(uri, opts) {
         var socket = this.nsp.connected[request.sid];
         if (!socket) { return; }
 
-        function sendAck(){
-          var response = JSON.stringify({
-            requestid: request.requestid
+          socket.join(request.room, function () {
+            var response = JSON.stringify({
+                requestid: request.requestid
+            });
+
+            pub.publish(self.responseChannel, response);
           });
-
-          pub.publish(self.responseChannel, response);
-        }
-
-        socket.join(request.room, sendAck);
-        break;
+          break;
 
       case requestTypes.remoteLeave:
 
         var socket = this.nsp.connected[request.sid];
-        if (!socket) { return; }
+        if (!socket) {
+            return;
+        }
 
-        function sendAck(){
+        socket.leave(request.room, function () {
           var response = JSON.stringify({
-            requestid: request.requestid
+              requestid: request.requestid
           });
 
           pub.publish(self.responseChannel, response);
-        }
-
-        socket.leave(request.room, sendAck);
+        });
         break;
 
       case requestTypes.remoteDisconnect:
