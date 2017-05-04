@@ -245,9 +245,7 @@ function adapter(uri, opts) {
       case requestTypes.remoteLeave:
 
         var socket = this.nsp.connected[request.sid];
-        if (!socket) {
-            return;
-        }
+        if (!socket) { return; }
 
         socket.leave(request.room, function () {
           var response = JSON.stringify({
