@@ -200,7 +200,7 @@ A number of other libraries adopt this protocol including:
 
 - [socket.io-emitter](https://github.com/socketio/socket.io-emitter)
 - [socket.io-python-emitter](https://github.com/GameXG/socket.io-python-emitter)
-
+- [socket.io-emitter-go](https://github.com/stackcats/socket.io-emitter-go)
 
 ## License
 
