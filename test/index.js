@@ -16,12 +16,6 @@ var socket1, socket2, socket3;
     name: 'socket.io-redis'
   },
   {
-    name: 'socket.io-redis without channel multiplexing',
-    options: {
-      withChannelMultiplexing: false
-    }
-  },
-  {
     name: 'socket.io-redis with ioredis',
     options: function () {
       return {
@@ -152,7 +146,7 @@ var socket1, socket2, socket3;
     it('deletes rooms upon disconnection', function(done){
       socket1.join('woot');
       socket1.on('disconnect', function() {
-        expect(socket1.adapter.sids[socket1.id]).to.be.empty();
+        expect(socket1.adapter.sids[socket1.id]).to.be(undefined);
         expect(socket1.adapter.rooms).to.be.empty();
         client1.disconnect();
         done();
@@ -172,6 +166,26 @@ var socket1, socket2, socket3;
 
       socket1.join('woot', function(){
         socket2.join('woot', test);
+      });
+    });
+
+    it('ignores messages from unknown channels', function(done){
+      namespace1.adapter.subClient.psubscribe('f?o', function () {
+        namespace3.adapter.pubClient.publish('foo', 'bar');
+      });
+
+      namespace1.adapter.subClient.on('pmessageBuffer', function () {
+        setTimeout(done, 50);
+      });
+    });
+
+    it('ignores messages from unknown channels (2)', function(done){
+      namespace1.adapter.subClient.subscribe('woot', function () {
+        namespace3.adapter.pubClient.publish('woot', 'toow');
+      });
+
+      namespace1.adapter.subClient.on('messageBuffer', function () {
+        setTimeout(done, 50);
       });
     });
 
@@ -200,6 +214,7 @@ var socket1, socket2, socket3;
       it('returns all rooms accross several nodes', function(done){
         socket1.join('woot1', function () {
           namespace1.adapter.allRooms(function(err, rooms){
+            expect(err).to.be(null);
             expect(rooms).to.have.length(4);
             expect(rooms).to.contain(socket1.id);
             expect(rooms).to.contain(socket2.id);
@@ -212,6 +227,7 @@ var socket1, socket2, socket3;
 
       it('makes a given socket join a room', function(done){
         namespace3.adapter.remoteJoin(socket1.id, 'woot3', function(err){
+          expect(err).to.be(null);
           var rooms = Object.keys(socket1.rooms);
           expect(rooms).to.have.length(2);
           expect(rooms).to.contain('woot3');
@@ -222,6 +238,7 @@ var socket1, socket2, socket3;
       it('makes a given socket leave a room', function(done){
         socket1.join('woot3', function(){
           namespace3.adapter.remoteLeave(socket1.id, 'woot3', function(err){
+            expect(err).to.be(null);
             var rooms = Object.keys(socket1.rooms);
             expect(rooms).to.have.length(1);
             expect(rooms).not.to.contain('woot3');
@@ -237,6 +254,7 @@ var socket1, socket2, socket3;
         }
 
         namespace3.adapter.customRequest('hello', function(err, replies){
+          expect(err).to.be(null);
           expect(replies).to.have.length(3);
           expect(replies).to.contain(namespace1.adapter.uid);
           done();
@@ -297,7 +315,7 @@ function init(options){
           socket1 = _socket1;
           socket2 = _socket2;
           socket3 = _socket3;
-          done();
+          setTimeout(done, 100);
         });
       });
     });
