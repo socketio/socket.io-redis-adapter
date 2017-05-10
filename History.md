@@ -1,4 +1,10 @@
 
+4.0.1 / 2017-05-11
+===================
+
+  * [docs] Add link to Go implementation of socket.io-emitter (#199)
+  * [fix] Fix duplicate identifier declaration (#213)
+
 4.0.0 / 2017-02-15
 ===================
 
