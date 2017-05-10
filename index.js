@@ -413,18 +413,35 @@ function adapter(uri, opts) {
    */
 
   Redis.prototype.add = function(id, room, fn){
-    debug('adding %s to %s ', id, room);
+    return this.addAll(id, [room], fn);
+  };
+
+  /**
+   * Subscribe client to room messages.
+   *
+   * @param {String} client id
+   * @param {String} room
+   * @param {Function} callback (optional)
+   * @api public
+   */
+
+  Redis.prototype.addAll = function(id, rooms, fn){
+    debug('adding %s to %s', id, rooms);
     var self = this;
     // subscribe only once per room
-    var alreadyHasRoom = this.rooms.hasOwnProperty(room);
-    Adapter.prototype.add.call(this, id, room);
+    var newRooms = rooms.filter(function (room) {
+      return !self.rooms.hasOwnProperty(room);
+    })
+    Adapter.prototype.addAll.call(this, id, rooms);
 
-    if (!this.withChannelMultiplexing || alreadyHasRoom) {
+    if (!this.withChannelMultiplexing || !newRooms.length) {
       if (fn) fn(null);
       return;
     }
 
-    var channel = this.channel + room + '#';
+    var channels = newRooms.map(function (room) {
+      return self.channel + room + '#';
+    });
 
     function onSubscribe(err) {
       if (err) {
@@ -435,7 +452,8 @@ function adapter(uri, opts) {
       if (fn) fn(null);
     }
 
-    sub.subscribe(channel, onSubscribe);
+    debug('subscribing to %s', channels);
+    sub.subscribe(channels, onSubscribe);
   };
 
   /**
