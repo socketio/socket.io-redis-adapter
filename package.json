@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "debug": "2.3.3",
-    "msgpack-lite": "0.1.26",
+    "notepack.io": "~1.0.1",
     "redis": "2.6.3",
     "socket.io-adapter": "~1.1.0",
     "uid2": "0.0.3"
