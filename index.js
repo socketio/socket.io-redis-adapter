@@ -136,6 +136,10 @@ function adapter(uri, opts) {
   Redis.prototype.onmessage = function(pattern, channel, msg){
     channel = channel.toString();
 
+    if (!this.channelMatches(channel, this.channel)) {
+      return debug('ignore different channel');
+    }
+
     var room = channel.substring(this.channel.length);
     if (room !== '' && !this.rooms.hasOwnProperty(room)) {
       return debug('ignore unknown room %s', room);
@@ -172,6 +176,8 @@ function adapter(uri, opts) {
 
     if (this.channelMatches(channel, this.responseChannel)) {
       return this.onresponse(channel, msg);
+    } else if (!this.channelMatches(channel, this.requestChannel)) {
+      return debug('ignore different channel');
     }
 
     var self = this;

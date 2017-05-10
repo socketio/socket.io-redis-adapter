@@ -169,6 +169,26 @@ var socket1, socket2, socket3;
       });
     });
 
+    it('ignores messages from unknown channels', function(done){
+      namespace1.adapter.subClient.psubscribe('f?o', function () {
+        namespace3.adapter.pubClient.publish('foo', 'bar');
+      });
+
+      namespace1.adapter.subClient.on('pmessageBuffer', function () {
+        setTimeout(done, 50);
+      });
+    });
+
+    it('ignores messages from unknown channels (2)', function(done){
+      namespace1.adapter.subClient.subscribe('woot', function () {
+        namespace3.adapter.pubClient.publish('woot', 'toow');
+      });
+
+      namespace1.adapter.subClient.on('messageBuffer', function () {
+        setTimeout(done, 50);
+      });
+    });
+
     describe('rooms', function () {
       it('returns rooms of a given client', function(done){
         socket1.join('woot1', function () {
