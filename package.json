@@ -25,7 +25,7 @@
     "expect.js": "0.3.1",
     "ioredis": "2.5.0",
     "mocha": "3.2.0",
-    "socket.io": "socketio/socket.io",
-    "socket.io-client": "socketio/socket.io-client"
+    "socket.io": "1.7.x",
+    "socket.io-client": "1.7.x"
   }
 }

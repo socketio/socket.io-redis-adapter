@@ -233,15 +233,13 @@ function adapter(uri, opts) {
         var socket = this.nsp.connected[request.sid];
         if (!socket) { return; }
 
-        function sendAck(){
+        socket.join(request.room, function(){
           var response = JSON.stringify({
             requestid: request.requestid
           });
 
           pub.publish(self.responseChannel, response);
-        }
-
-        socket.join(request.room, sendAck);
+        });
         break;
 
       case requestTypes.remoteLeave:
@@ -249,15 +247,13 @@ function adapter(uri, opts) {
         var socket = this.nsp.connected[request.sid];
         if (!socket) { return; }
 
-        function sendAck(){
+        socket.leave(request.room, function(){
           var response = JSON.stringify({
             requestid: request.requestid
           });
 
           pub.publish(self.responseChannel, response);
-        }
-
-        socket.leave(request.room, sendAck);
+        });
         break;
 
       case requestTypes.remoteDisconnect:
