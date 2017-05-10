@@ -233,23 +233,23 @@ function adapter(uri, opts) {
         var socket = this.nsp.connected[request.sid];
         if (!socket) { return; }
 
-          socket.join(request.room, function () {
-            var response = JSON.stringify({
-                requestid: request.requestid
-            });
-
-            pub.publish(self.responseChannel, response);
+        socket.join(request.room, function(){
+          var response = JSON.stringify({
+            requestid: request.requestid
           });
-          break;
+
+          pub.publish(self.responseChannel, response);
+        });
+        break;
 
       case requestTypes.remoteLeave:
 
         var socket = this.nsp.connected[request.sid];
         if (!socket) { return; }
 
-        socket.leave(request.room, function () {
+        socket.leave(request.room, function(){
           var response = JSON.stringify({
-              requestid: request.requestid
+            requestid: request.requestid
           });
 
           pub.publish(self.responseChannel, response);
