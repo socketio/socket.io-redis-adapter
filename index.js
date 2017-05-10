@@ -441,6 +441,42 @@ function adapter(uri, opts) {
 
     sub.subscribe(channel, onSubscribe);
   };
+  
+   /**
+   * Subscribe client to multiple rooms.
+   *
+   * @param {String} client id
+   * @param {Array} rooms
+   * @param {Function} callback (optional)
+   * @api public
+   */
+  Redis.prototype.addAll = function(id, rooms, fn){
+   for (var i = 0; i < rooms.length; i++) {
+     var room = rooms[i];
+     debug('adding %s to %s ', id, room);
+    // subscribe only once per room
+    var alreadyHasRoom = this.rooms.hasOwnProperty(room);
+    Redis.prototype.add.call(this, id, room);
+
+    if (!this.withChannelMultiplexing || alreadyHasRoom) {
+      if (fn) fn(null);
+      return;
+    }
+
+    var channel = this.channel + room + '#';
+
+    function onSubscribe(err) {
+      if (err) {
+        self.emit('error', err);
+        if (fn) fn(err);
+        return;
+      }
+      if (fn) fn(null);
+    }
+
+    sub.subscribe(channel, onSubscribe);
+   }
+  }
 
   /**
    * Unsubscribe client from room messages.
