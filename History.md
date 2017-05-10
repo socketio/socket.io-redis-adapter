@@ -1,4 +1,10 @@
 
+5.0.0 / 2017-05-11
+===================
+
+  * [perf] Use notepack instead of msgpack-lite (#218)
+  * [perf] Use pattern matching at the namespace level (#217)
+
 4.0.1 / 2017-05-11
 ===================
 
