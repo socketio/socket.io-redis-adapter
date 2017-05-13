@@ -140,7 +140,7 @@ function adapter(uri, opts) {
       return debug('ignore different channel');
     }
 
-    var room = channel.substring(this.channel.length);
+    var room = channel.slice(this.channel.length, -1);
     if (room !== '' && !this.rooms.hasOwnProperty(room)) {
       return debug('ignore unknown room %s', room);
     }
@@ -404,11 +404,12 @@ function adapter(uri, opts) {
     packet.nsp = this.nsp.name;
     if (!(remote || (opts && opts.flags && opts.flags.local))) {
       var msg = msgpack.encode([uid, packet, opts]);
+      var channel = this.channel;
       if (opts.rooms && opts.rooms.length === 1) {
-        pub.publish(this.channel + opts.rooms[0], msg);
-      } else {
-        pub.publish(this.channel, msg);
+        channel += opts.rooms[0] + '#';
       }
+      debug('publishing message to channel %s', channel);
+      pub.publish(channel, msg);
     }
     Adapter.prototype.broadcast.call(this, packet, opts);
   };
