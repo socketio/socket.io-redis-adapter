@@ -237,7 +237,19 @@ function adapter(uri, opts) {
 
         pub.publish(self.responseChannel, response);
         break;
+	 case requestTypes.remoteEmit:
+	    var socket = this.nsp.connected[request.sid];
+		if (!socket) { return; }
+		function sendAck(){
+          var response = JSON.stringify({
+            requestid: request.requestid
+          });
 
+          pub.publish(self.responseChannel, response);
+        }
+
+        socket.emit(request.name,request.data);
+        break;
       case requestTypes.remoteJoin:
 
         var socket = this.nsp.connected[request.sid];
@@ -368,6 +380,7 @@ function adapter(uri, opts) {
         }
         break;
 
+	  case requestTypes.remoteEmit:
       case requestTypes.remoteJoin:
       case requestTypes.remoteLeave:
       case requestTypes.remoteDisconnect:
@@ -559,6 +572,44 @@ function adapter(uri, opts) {
     });
   };
 
+  /**
+    * Makes Emit with Specific Sockets 
+   @param {String socket id}
+  
+  */
+  Redis.prototype.remoteEmit = function(id,_name,_data,fn){
+	   var self = this;
+		var requestid = uid2(6);
+		var socket = this.nsp.connected[id];
+		if (socket) {
+		  //socket.emit(room, fn);
+		  
+		  socket.emit(_name, _data);
+		  return;
+		}
+		console.log("no_socket");
+		  var request = JSON.stringify({
+		  requestid : requestid,
+		  type: requestTypes.remoteEmit,
+		  sid: id,
+		  name :_name,
+		  data :_data,
+		});
+
+		// if there is no response for x second, return result
+		var timeout = setTimeout(function() {
+		  if (fn) process.nextTick(fn.bind(null, new Error('timeout reached while waiting for remoteEmit response')));
+		  delete self.requests[requestid];
+		}, self.requestsTimeout);
+
+		self.requests[requestid] = {
+		  type: requestTypes.remoteEmit,
+		  callback: fn,
+		  timeout: timeout
+		};
+
+		pub.publish(self.requestChannel, request);
+  }
   /**
    * Makes the socket with the given id join the room
    *

@@ -141,6 +141,17 @@ io.of('/').adapter.customRequest('john', function(err, replies){
 });
 ```
 
+### RedisAdapter#remoteEmit(id:String, _name:String,_data:Object, fn:Function)
+
+Make Emit With specific Sockets.
+You Can Send Message To Socket. ( Even if, another socket-server)
+
+```js
+io.of('/').adpater.remoteEmit('<socket-id>','emit-name','emit-data',function(err){
+
+});
+```
+
 ## Client error handling
 
 Access the `pubClient` and `subClient` properties of the
