@@ -220,6 +220,7 @@ var socket1, socket2, socket3;
             expect(rooms).to.contain(socket2.id);
             expect(rooms).to.contain(socket3.id);
             expect(rooms).to.contain('woot1');
+            expect(namespace1.adapter.requests).to.be.empty();
             done();
           });
         });

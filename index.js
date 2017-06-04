@@ -307,7 +307,6 @@ function adapter(uri, opts) {
   Redis.prototype.onresponse = function(channel, msg){
     var self = this;
     var response;
-    var requestid;
 
     try {
       response = JSON.parse(msg);
@@ -316,12 +315,12 @@ function adapter(uri, opts) {
       return;
     }
 
-    if (!response.requestid || !self.requests[response.requestid]) {
+    var requestid = response.requestid;
+
+    if (!requestid || !self.requests[requestid]) {
       debug('ignoring unknown request');
       return;
     }
-
-    requestid = response.requestid;
 
     debug('received response %j', response);
 
