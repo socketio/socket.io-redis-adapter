@@ -1,4 +1,11 @@
 
+5.1.0 / 2017-06-04
+===================
+
+  * [chore] Bump dependencies (#227)
+  * [feat] Add support for ArrayBuffer (#226)
+  * [fix] Use the requestid from response when deleting requests (#225)
+
 5.0.1 / 2017-05-13
 ===================
 
