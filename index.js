@@ -324,7 +324,7 @@ function adapter(uri, opts) {
 
     debug('received response %j', response);
 
-    var request = self.requests[response.requestid];
+    var request = self.requests[requestid];
 
     switch (request.type) {
 
