@@ -34,15 +34,17 @@ var socket1, socket2, socket3;
     afterEach(cleanup);
 
     it('broadcasts', function(done){
-      client1.on('woot', function(a, b, c){
+      client1.on('woot', function(a, b, c, d){
         expect(a).to.eql([]);
         expect(b).to.eql({ a: 'b' });
-        expect(Buffer.isBuffer(c)).to.be(true);
+        expect(Buffer.isBuffer(c) && c.equals(buf)).to.be(true);
+        expect(Buffer.isBuffer(d) && d.equals(Buffer.from(array))).to.be(true); // converted to Buffer on the client-side
         done();
       });
 
       var buf = new Buffer('asdfasdf', 'utf8');
-      socket2.broadcast.emit('woot', [], { a: 'b' }, buf);
+      var array = Uint8Array.of(1, 2, 3, 4);
+      socket2.broadcast.emit('woot', [], { a: 'b' }, buf, array);
     });
 
     it('broadcasts to rooms', function(done){
