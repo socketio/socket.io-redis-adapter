@@ -6,8 +6,8 @@
 ## How to use
 
 ```js
-var io = require('socket.io')(3000);
-var redis = require('socket.io-redis');
+const io = require('socket.io')(3000);
+const redis = require('socket.io-redis');
 io.adapter(redis({ host: 'localhost', port: 6379 }));
 ```
 
@@ -56,17 +56,17 @@ that a regular `Adapter` does not
 Returns the list of client IDs connected to `rooms` across all nodes. See [Namespace#clients(fn:Function)](https://github.com/socketio/socket.io#namespaceclientsfnfunction)
 
 ```js
-io.of('/').adapter.clients(function (err, clients) {
+io.of('/').adapter.clients((err, clients) => {
   console.log(clients); // an array containing all connected socket ids
 });
 
-io.of('/').adapter.clients(['room1', 'room2'], function (err, clients) {
+io.of('/').adapter.clients(['room1', 'room2'], (err, clients) => {
   console.log(clients); // an array containing socket ids in 'room1' and/or 'room2'
 });
 
 // you can also use
 
-io.in('room3').clients(function (err, clients) {
+io.in('room3').clients((err, clients) => {
   console.log(clients); // an array containing socket ids in 'room3'
 });
 ```
@@ -76,7 +76,7 @@ io.in('room3').clients(function (err, clients) {
 Returns the list of rooms the client with the given ID has joined (even on another node).
 
 ```js
-io.of('/').adapter.clientRooms('<my-id>', function (err, rooms) {
+io.of('/').adapter.clientRooms('<my-id>', (err, rooms) => {
   if (err) { /* unknown id */ }
   console.log(rooms); // an array containing every room a given id has joined.
 });
@@ -87,7 +87,7 @@ io.of('/').adapter.clientRooms('<my-id>', function (err, rooms) {
 Returns the list of all rooms.
 
 ```js
-io.of('/').adapter.allRooms(function (err, rooms) {
+io.of('/').adapter.allRooms((err, rooms) => {
   console.log(rooms); // an array containing all rooms (accross every node)
 });
 ```
@@ -97,7 +97,7 @@ io.of('/').adapter.allRooms(function (err, rooms) {
 Makes the socket with the given id join the room. The callback will be called once the socket has joined the room, or with an `err` argument if the socket was not found.
 
 ```js
-io.of('/').adapter.remoteJoin('<my-id>', 'room1', function (err) {
+io.of('/').adapter.remoteJoin('<my-id>', 'room1', (err) => {
   if (err) { /* unknown id */ }
   // success
 });
@@ -108,7 +108,7 @@ io.of('/').adapter.remoteJoin('<my-id>', 'room1', function (err) {
 Makes the socket with the given id leave the room. The callback will be called once the socket has left the room, or with an `err` argument if the socket was not found.
 
 ```js
-io.of('/').adapter.remoteLeave('<my-id>', 'room1', function (err) {
+io.of('/').adapter.remoteLeave('<my-id>', 'room1', (err) => {
   if (err) { /* unknown id */ }
   // success
 });
@@ -119,7 +119,7 @@ io.of('/').adapter.remoteLeave('<my-id>', 'room1', function (err) {
 Makes the socket with the given id to get disconnected. If `close` is set to true, it also closes the underlying socket. The callback will be called once the socket was disconnected, or with an `err` argument if the socket was not found.
 
 ```js
-io.of('/').adapter.remoteDisconnect('<my-id>', true, function (err) {
+io.of('/').adapter.remoteDisconnect('<my-id>', true, (err) => {
   if (err) { /* unknown id */ }
   // success
 });
@@ -131,7 +131,7 @@ Sends a request to every nodes, that will respond through the `customHook` metho
 
 ```js
 // on every node
-io.of('/').adapter.customHook = function (data, cb) {
+io.of('/').adapter.customHook = (data, cb) => {
   cb('hello ' + data);
 }
 
@@ -147,8 +147,8 @@ Access the `pubClient` and `subClient` properties of the
 Redis Adapter instance to subscribe to its `error` event:
 
 ```js
-var redis = require('socket.io-redis');
-var adapter = redis('localhost:6379');
+const redis = require('socket.io-redis');
+const adapter = redis('localhost:6379');
 adapter.pubClient.on('error', function(){});
 adapter.subClient.on('error', function(){});
 ```
@@ -157,8 +157,8 @@ The errors emitted from `pubClient` and `subClient` will
 also be forwarded to the adapter instance:
 
 ```js
-var io = require('socket.io')(3000);
-var redis = require('socket.io-redis');
+const io = require('socket.io')(3000);
+const redis = require('socket.io-redis');
 io.adapter(redis({ host: 'localhost', port: 6379 }));
 io.of('/').adapter.on('error', function(){});
 ```
@@ -170,11 +170,32 @@ that has a password, use pub/sub options instead of passing
 a connection string.
 
 ```js
-var redis = require('redis').createClient;
-var adapter = require('socket.io-redis');
-var pub = redis(port, host, { auth_pass: "pwd" });
-var sub = redis(port, host, { auth_pass: "pwd" });
+const redis = require('redis').createClient;
+const adapter = require('socket.io-redis');
+const pub = redis(port, host, { auth_pass: "pwd" });
+const sub = redis(port, host, { auth_pass: "pwd" });
 io.adapter(adapter({ pubClient: pub, subClient: sub }));
+```
+
+## With [ioredis](https://github.com/luin/ioredis) client
+
+```js
+const io = require('socket.io')(3000);
+const Redis = require('ioredis');
+
+const cluster = new Redis.Cluster([
+  {
+    port: 6380,
+    host: '127.0.0.1'
+  },
+  {
+    port: 6381,
+    host: '127.0.0.1'
+  }
+]);
+
+const adapter = require('socket.io-redis');
+io.adapter(adapter({ pubClient: cluster, subClient: cluster }));
 ```
 
 ## Protocol
