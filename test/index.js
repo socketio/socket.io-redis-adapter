@@ -4,6 +4,7 @@ var io = require('socket.io');
 var ioc = require('socket.io-client');
 var expect = require('expect.js');
 var adapter = require('../');
+var msgpackLite = require('msgpack-lite');
 
 var ioredis = require('ioredis').createClient;
 
@@ -24,6 +25,14 @@ var socket1, socket2, socket3;
       }
     }
   },
+  {
+    name: 'socket.io-redis with msgpack-lite',
+    options: function () {
+      return {
+        encoder: msgpackLite
+      }
+    }
+  }
 ].forEach(function (suite) {
   var name = suite.name;
   var options = suite.options;
@@ -38,7 +47,9 @@ var socket1, socket2, socket3;
         expect(a).to.eql([]);
         expect(b).to.eql({ a: 'b' });
         expect(Buffer.isBuffer(c) && c.equals(buf)).to.be(true);
-        expect(Buffer.isBuffer(d) && d.equals(Buffer.from(array))).to.be(true); // converted to Buffer on the client-side
+        if(name !== 'socket.io-redis with msgpack-lite') {
+          expect(Buffer.isBuffer(d) && d.equals(Buffer.from(array))).to.be(true); // converted to Buffer on the client-side
+        }
         done();
       });
 

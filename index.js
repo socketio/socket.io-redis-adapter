@@ -51,6 +51,7 @@ function adapter(uri, opts) {
   var sub = opts.subClient;
   var prefix = opts.key || 'socket.io';
   var requestsTimeout = opts.requestsTimeout || 1000;
+  var encoder = opts.encoder || msgpack;
 
   // init clients if needed
   function createClient() {
@@ -145,7 +146,7 @@ function adapter(uri, opts) {
       return debug('ignore unknown room %s', room);
     }
 
-    var args = msgpack.decode(msg);
+    var args = encoder.decode(msg);
     var packet;
 
     if (uid === args.shift()) return debug('ignore same uid');
@@ -405,7 +406,7 @@ function adapter(uri, opts) {
   Redis.prototype.broadcast = function(packet, opts, remote){
     packet.nsp = this.nsp.name;
     if (!(remote || (opts && opts.flags && opts.flags.local))) {
-      var msg = msgpack.encode([uid, packet, opts]);
+      var msg = encoder.encode([uid, packet, opts]);
       var channel = this.channel;
       if (opts.rooms && opts.rooms.length === 1) {
         channel += opts.rooms[0] + '#';
