@@ -50,7 +50,7 @@ function adapter(uri, opts) {
   var pub = opts.pubClient;
   var sub = opts.subClient;
   var prefix = opts.key || 'socket.io';
-  var requestsTimeout = opts.requestsTimeout || 1000;
+  var requestsTimeout = opts.requestsTimeout || 5000;
 
   // init clients if needed
   function createClient() {
