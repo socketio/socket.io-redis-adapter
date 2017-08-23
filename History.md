@@ -17,6 +17,8 @@
   * [perf] Use notepack instead of msgpack-lite (#218)
   * [perf] Use pattern matching at the namespace level (#217)
 
+Note: This is the first version compatible with socket.io v2. Please use previous versions (4.x) for socket.io v1.x.
+
 4.0.1 / 2017-05-11
 ===================
 
