@@ -102,7 +102,7 @@ function adapter(uri, opts) {
 
     var self = this;
 
-    sub.psubscribe(this.channel + '*', function(err){
+    sub.subscribe(this.channel + '*', function(err){
       if (err) self.emit('error', err);
     });
 
