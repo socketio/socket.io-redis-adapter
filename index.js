@@ -425,12 +425,13 @@ function adapter(uri, opts) {
    */
 
   Redis.prototype.clients = function(opts, fn){
-    var flags = {};
-    var rooms = [];
     if ('function' == typeof opts){
       fn = opts;
       opts = null;
     }
+
+    var flags = {};
+    var rooms = opts;
 
     if (opts && typeof opts === 'object' && opts.hasOwnProperty('rooms')) {
       flags = opts.flags || {};
@@ -455,7 +456,6 @@ function adapter(uri, opts) {
     }
 
     var requestid = uid2(6);
-
     pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
       if (err) {
         self.emit('error', err);
