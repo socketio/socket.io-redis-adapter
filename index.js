@@ -424,15 +424,36 @@ function adapter(uri, opts) {
    * @api public
    */
 
-  Redis.prototype.clients = function(rooms, fn){
-    if ('function' == typeof rooms){
-      fn = rooms;
-      rooms = null;
+  Redis.prototype.clients = function(opts, fn){
+    var flags = {};
+    var rooms = [];
+    if ('function' == typeof opts){
+      fn = opts;
+      opts = null;
+    }
+
+    if (opts && typeof opts === 'object' && opts.hasOwnProperty('rooms')) {
+      flags = opts.flags || {};
+      rooms = opts.rooms || [];
     }
 
     rooms = rooms || [];
 
     var self = this;
+
+    if (flags.local) {
+      Adapter.prototype.clients.call(self, rooms, function (err, clients) {
+        if (err) {
+          self.emit('error', err);
+          fn(err);
+          return;
+        }
+
+        fn(null, clients);
+      });
+      return;
+    }
+
     var requestid = uid2(6);
 
     pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
