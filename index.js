@@ -419,7 +419,7 @@ function adapter(uri, opts) {
   /**
    * Gets a list of clients by sid.
    *
-   * @param {Array} explicit set of rooms to check.
+   * @param {Object} options
    * @param {Function} callback
    * @api public
    */
