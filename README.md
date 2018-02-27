@@ -7,13 +7,27 @@
 
 ```js
 const io = require('socket.io')(3000);
-const redis = require('socket.io-redis');
-io.adapter(redis({ host: 'localhost', port: 6379 }));
+const redisAdapter = require('socket.io-redis');
+io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 ```
 
 By running socket.io with the `socket.io-redis` adapter you can run
 multiple socket.io instances in different processes or servers that can
 all broadcast and emit events to and from each other.
+
+So any of the following commands:
+
+```js
+io.emit('hello', 'to all clients');
+io.to('room42').emit('hello', "to all clients in 'room42' room");
+
+io.on('connection', (socket) => {
+  socket.broadcast.emit('hello', 'to all clients except sender');
+  socket.to('room42').emit('hello', "to all clients in 'room42' room except sender");
+});
+```
+
+will properly be broadcast to the clients through the Redis Pub/Sub mechanism.
 
 If you need to emit events to socket.io instances from a non-socket.io
 process, you should use [socket.io-emitter](https://github.com/socketio/socket.io-emitter).
@@ -147,8 +161,7 @@ Access the `pubClient` and `subClient` properties of the
 Redis Adapter instance to subscribe to its `error` event:
 
 ```js
-const redis = require('socket.io-redis');
-const adapter = redis('localhost:6379');
+const adapter = require('socket.io-redis')('localhost:6379');
 adapter.pubClient.on('error', function(){});
 adapter.subClient.on('error', function(){});
 ```
@@ -158,8 +171,8 @@ also be forwarded to the adapter instance:
 
 ```js
 const io = require('socket.io')(3000);
-const redis = require('socket.io-redis');
-io.adapter(redis({ host: 'localhost', port: 6379 }));
+const redisAdapter = require('socket.io-redis');
+io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 io.of('/').adapter.on('error', function(){});
 ```
 
@@ -170,14 +183,16 @@ that has a password, use pub/sub options instead of passing
 a connection string.
 
 ```js
-const redis = require('redis').createClient;
-const adapter = require('socket.io-redis');
-const pub = redis(port, host, { auth_pass: "pwd" });
-const sub = redis(port, host, { auth_pass: "pwd" });
-io.adapter(adapter({ pubClient: pub, subClient: sub }));
+const redis = require('redis');
+const redisAdapter = require('socket.io-redis');
+const pub = redis.createClient(port, host, { auth_pass: "pwd" });
+const sub = redis.createClient(port, host, { auth_pass: "pwd" });
+io.adapter(redisAdapter({ pubClient: pub, subClient: sub }));
 ```
 
 ## With [ioredis](https://github.com/luin/ioredis) client
+
+### Cluster example
 
 ```js
 const io = require('socket.io')(3000);
@@ -194,8 +209,28 @@ const cluster = new Redis.Cluster([
   }
 ]);
 
-const adapter = require('socket.io-redis');
-io.adapter(adapter({ pubClient: cluster, subClient: cluster }));
+const redisAdapter = require('socket.io-redis');
+io.adapter(redisAdapter({ pubClient: cluster, subClient: cluster }));
+```
+
+### Sentinel Example
+
+```js
+const io = require('socket.io')(3000);
+const Redis = require('ioredis');
+
+const options = {
+  sentinels: [
+    { host: 'somehost1', port: 26379 },
+    { host: 'somehost2', port: 26379 }
+  ],
+  name: 'master01'
+};
+
+const pubClient = new Redis(options);
+const subClient = new Redis(options);
+
+io.adapter(redisAdapter({ pubClient: options, subClient: options }));
 ```
 
 ## Protocol
