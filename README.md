@@ -230,7 +230,7 @@ const options = {
 const pubClient = new Redis(options);
 const subClient = new Redis(options);
 
-io.adapter(redisAdapter({ pubClient: options, subClient: options }));
+io.adapter(redisAdapter({ pubClient: pubClient, subClient: subClient }));
 ```
 
 ## Protocol
