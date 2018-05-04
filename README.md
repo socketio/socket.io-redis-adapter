@@ -196,9 +196,10 @@ io.adapter(redisAdapter({ pubClient: pub, subClient: sub }));
 
 ```js
 const io = require('socket.io')(3000);
+const redisAdapter = require('socket.io-redis');
 const Redis = require('ioredis');
 
-const cluster = new Redis.Cluster([
+const startupNodes = [
   {
     port: 6380,
     host: '127.0.0.1'
@@ -207,16 +208,19 @@ const cluster = new Redis.Cluster([
     port: 6381,
     host: '127.0.0.1'
   }
-]);
+];
 
-const redisAdapter = require('socket.io-redis');
-io.adapter(redisAdapter({ pubClient: cluster, subClient: cluster }));
+io.adapter(redisAdapter({
+  pubClient: new Redis.Cluster(startupNodes),
+  subClient: new Redis.Cluster(startupNodes)
+}));
 ```
 
 ### Sentinel Example
 
 ```js
 const io = require('socket.io')(3000);
+const redisAdapter = require('socket.io-redis');
 const Redis = require('ioredis');
 
 const options = {
@@ -227,10 +231,10 @@ const options = {
   name: 'master01'
 };
 
-const pubClient = new Redis(options);
-const subClient = new Redis(options);
-
-io.adapter(redisAdapter({ pubClient: pubClient, subClient: subClient }));
+io.adapter(redisAdapter({
+  pubClient: new Redis(options),
+  subClient: new Redis(options)
+}));
 ```
 
 ## Protocol
