@@ -27,7 +27,7 @@ io.on('connection', (socket) => {
 });
 ```
 
-will properly be broadcast to the clients through the Redis Pub/Sub mechanism.
+will properly be broadcasted to the clients through the Redis Pub/Sub mechanism.
 
 If you need to emit events to socket.io instances from a non-socket.io
 process, you should use [socket.io-emitter](https://github.com/socketio/socket.io-emitter).
