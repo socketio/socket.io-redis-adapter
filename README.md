@@ -10,6 +10,15 @@ const io = require('socket.io')(3000);
 const redisAdapter = require('socket.io-redis');
 io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 ```
+or connect to Unix Socket
+```
+const io = require('socket.io')(3000);
+const redisAdapter = require('socket.io-redis');
+io.adapter(require('socket.io-redis')({
+  path: '/tmp/redis.sock,
+  socket_keepalive: true
+}));
+```
 
 By running socket.io with the `socket.io-redis` adapter you can run
 multiple socket.io instances in different processes or servers that can
