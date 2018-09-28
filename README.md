@@ -14,7 +14,7 @@ or connect to Unix Socket
 ```
 const io = require('socket.io')(3000);
 const redisAdapter = require('socket.io-redis');
-io.adapter(redisAdapter('socket.io-redis')({
+io.adapter(redisAdapter({
   path: '/tmp/redis.sock',
   socket_keepalive: true
 }));
