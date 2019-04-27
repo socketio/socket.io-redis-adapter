@@ -22,7 +22,7 @@
   },
   "devDependencies": {
     "expect.js": "0.3.1",
-    "ioredis": "^4.0.0",
+    "ioredis": "^4.9.0",
     "mocha": "^3.4.2",
     "socket.io": "latest",
     "socket.io-client": "latest"
