@@ -18,7 +18,7 @@
     "notepack.io": "~2.1.2",
     "redis": "~2.8.0",
     "socket.io-adapter": "~1.1.0",
-    "uid2": "0.0.3"
+    "uid-safe": "~2.1.5"
   },
   "devDependencies": {
     "expect.js": "0.3.1",
