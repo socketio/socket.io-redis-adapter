@@ -423,7 +423,7 @@ function adapter(uri, opts) {
    * @param {String} channel
    */
 
-  async function getNumSub(channel){
+  function getNumSub(channel){
     if(pub.constructor.name != 'Cluster'){
       // RedisClient or Redis
       return new Promise(function(resolve,reject) {
@@ -556,8 +556,6 @@ function adapter(uri, opts) {
     var requestid = uid2(6);
 
     getNumSub(self.requestChannel).then(numsub => {
-      console.log("NUMSUB : " + numsub);
-
       debug('waiting for %d responses to "allRooms" request', numsub);
 
       var request = JSON.stringify({
