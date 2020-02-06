@@ -49,7 +49,7 @@ function adapter(uri, opts) {
   // opts
   var pub = opts.pubClient;
   var sub = opts.subClient;
-  var secondary = opts.secondary;
+  var secondarySub = opts.secondarySub;
   var prefix = opts.key || 'socket.io';
   var requestsTimeout = opts.requestsTimeout || 5000;
 
@@ -100,36 +100,36 @@ function adapter(uri, opts) {
     }
     this.pubClient = pub;
     this.subClient = sub;
-    this.secondaryClient = secondary;
+    this.secondarySubClient = secondarySub;
 
     var self = this;
 
     sub.psubscribe(this.channel + '*', function(err){
       if (err) self.emit('error', err);
     });
-    secondary && secondary.psubscribe(this.channel + "*", function(err) {
+    secondarySub && secondarySub.psubscribe(this.channel + "*", function(err) {
       if (err) self.emit("error", err);
     });    
 
     sub.on('pmessageBuffer', this.onmessage.bind(this));
-    secondary && secondary.on("pmessageBuffer", this.onmessage.bind(this));
+    secondarySub && secondarySub.on("pmessageBuffer", this.onmessage.bind(this));
 
     sub.subscribe([this.requestChannel, this.responseChannel], function(err){
       if (err) self.emit('error', err);
     });
-    secondary && secondary.subscribe([this.requestChannel, this.responseChannel], function(err) {
+    secondarySub && secondarySub.subscribe([this.requestChannel, this.responseChannel], function(err) {
       if (err) self.emit("error", err);
     });    
 
     sub.on('messageBuffer', this.onrequest.bind(this));
-    secondary && secondary.on("messageBuffer", this.onrequest.bind(this));
+    secondarySub && secondarySub.on("messageBuffer", this.onrequest.bind(this));
 
     function onError(err) {
       self.emit('error', err);``
     }
     pub.on('error', onError);
     sub.on('error', onError);
-    secondary && secondary.on("error", onError);
+    secondarySub && secondarySub.on("error", onError);
   }
 
   /**
