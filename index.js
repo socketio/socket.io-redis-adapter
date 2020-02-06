@@ -107,7 +107,7 @@ function adapter(uri, opts) {
     sub.psubscribe(this.channel + '*', function(err){
       if (err) self.emit('error', err);
     });
-    fallbackSub.psubscribe(this.channel + "*", function(err) {
+    fallbackSub && fallbackSub.psubscribe(this.channel + "*", function(err) {
       if (err) self.emit("error", err);
     });    
 
