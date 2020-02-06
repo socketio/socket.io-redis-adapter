@@ -125,7 +125,7 @@ function adapter(uri, opts) {
     secondarySub && secondarySub.on("messageBuffer", this.onrequest.bind(this));
 
     function onError(err) {
-      self.emit('error', err);``
+      self.emit('error', err);
     }
     pub.on('error', onError);
     sub.on('error', onError);
