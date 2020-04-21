@@ -1,10 +1,23 @@
 language: node_js
-sudo: false
+
 node_js:
-  - "6"
-  - "8"
-  - "node"
-notifications:
-  irc: "irc.freenode.org#socket.io"
+  - "12.16.1"
+
 services:
-  - redis-server
+  - redis
+
+cache:
+  npm: true
+  directories:
+    - ~/.cache
+    - ~/.nvm
+    - ~/.npm
+
+install:
+  - npm install
+
+script:
+  - npm test
+
+notifications:
+  email: false
