@@ -416,6 +416,41 @@ function adapter(uri, opts) {
     Adapter.prototype.broadcast.call(this, packet, opts);
   };
 
+
+  /**
+   * Get the number of subscribers of a channel
+   *
+   * @param {String} channel
+   */
+
+  function getNumSub(channel){
+    if(pub.constructor.name != 'Cluster'){
+      // RedisClient or Redis
+      return new Promise(function(resolve,reject) {
+        pub.send_command('pubsub', ['numsub', channel], function(err, numsub){
+          if (err) return reject(err);
+          resolve(parseInt(numsub[1], 10));
+        });
+      })
+    }else{
+      // Cluster
+      var nodes = pub.nodes();
+      return Promise.all(
+        nodes.map(function(node) {
+          return node.send_command('pubsub', ['numsub', channel]);
+        })
+      ).then(function(values) {
+        var numsub = 0;
+        values.map(function(value){
+          numsub +=  parseInt(value[1], 10);
+        })
+        return numsub;
+      }).catch(function(err){
+        throw err;
+      });
+    }
+  }
+
   /**
    * Gets a list of clients by sid.
    *
@@ -435,14 +470,7 @@ function adapter(uri, opts) {
     var self = this;
     var requestid = uid2(6);
 
-    pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
-      if (err) {
-        self.emit('error', err);
-        if (fn) fn(err);
-        return;
-      }
-
-      numsub = parseInt(numsub[1], 10);
+    getNumSub(self.requestChannel).then(numsub => {
       debug('waiting for %d responses to "clients" request', numsub);
 
       var request = JSON.stringify({
@@ -468,6 +496,9 @@ function adapter(uri, opts) {
       };
 
       pub.publish(self.requestChannel, request);
+    }).catch(err => {
+      self.emit('error', err);
+      if (fn) fn(err);
     });
   };
 
@@ -524,14 +555,7 @@ function adapter(uri, opts) {
     var self = this;
     var requestid = uid2(6);
 
-    pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
-      if (err) {
-        self.emit('error', err);
-        if (fn) fn(err);
-        return;
-      }
-
-      numsub = parseInt(numsub[1], 10);
+    getNumSub(self.requestChannel).then(numsub => {
       debug('waiting for %d responses to "allRooms" request', numsub);
 
       var request = JSON.stringify({
@@ -556,6 +580,9 @@ function adapter(uri, opts) {
       };
 
       pub.publish(self.requestChannel, request);
+    }).catch(err => {
+      self.emit('error', err);
+      if (fn) fn(err);
     });
   };
 
@@ -700,14 +727,7 @@ function adapter(uri, opts) {
     var self = this;
     var requestid = uid2(6);
 
-    pub.send_command('pubsub', ['numsub', self.requestChannel], function(err, numsub){
-      if (err) {
-        self.emit('error', err);
-        if (fn) fn(err);
-        return;
-      }
-
-      numsub = parseInt(numsub[1], 10);
+    getNumSub(self.requestChannel).then(numsub => {
       debug('waiting for %d responses to "customRequest" request', numsub);
 
       var request = JSON.stringify({
@@ -733,6 +753,9 @@ function adapter(uri, opts) {
       };
 
       pub.publish(self.requestChannel, request);
+    }).catch(err => {
+      self.emit('error', err);
+      if (fn) fn(err);
     });
   };
 
