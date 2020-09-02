@@ -16,7 +16,7 @@
   "dependencies": {
     "debug": "~4.1.0",
     "notepack.io": "~2.1.2",
-    "redis": "~2.8.0",
+    "redis": "^3.0.0",
     "socket.io-adapter": "~1.1.0",
     "uid2": "0.0.3"
   },
