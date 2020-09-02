@@ -1,3 +1,12 @@
+# [5.4.0](https://github.com/socketio/socket.io-redis/compare/5.3.0...5.4.0) (2020-09-02)
+
+
+### Features
+
+* update node-redis version to 3.x ([5b3ed58](https://github.com/socketio/socket.io-redis/commit/5b3ed5877acfdb35e4faa2f46f06a8032ff8b574))
+
+
+
 # [5.3.0](https://github.com/socketio/socket.io-redis/compare/5.2.0...5.3.0) (2020-06-04)
 
 
