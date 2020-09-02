@@ -42,7 +42,7 @@ var socket1, socket2, socket3;
         done();
       });
 
-      var buf = new Buffer('asdfasdf', 'utf8');
+      var buf = Buffer.from('asdfasdf', 'utf8');
       var array = Uint8Array.of(1, 2, 3, 4);
       socket2.broadcast.emit('woot', [], { a: 'b' }, buf, array);
     });
