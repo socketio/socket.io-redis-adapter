@@ -1,3 +1,43 @@
+# [6.0.0](https://github.com/socketio/socket.io-redis/compare/5.4.0...6.0.0) (2020-11-12)
+
+
+### Features
+
+* add support for Socket.IO v3 ([d9bcb19](https://github.com/socketio/socket.io-redis/commit/d9bcb1935940d7ad414ba7154de51cdc4a7d45b1))
+
+### BREAKING CHANGES:
+
+- all the requests (for inter-node communication) now return a Promise instead of accepting a callback
+
+Before:
+
+```js
+io.of('/').adapter.allRooms((err, rooms) => {
+  console.log(rooms); // an array containing all rooms (accross every node)
+});
+```
+
+After:
+
+```js
+const rooms = await io.of('/').adapter.allRooms();
+console.log(rooms); // a Set containing all rooms (across every node)
+```
+
+- RedisAdapter.clients() is renamed to RedisAdapter.sockets()
+
+See https://github.com/socketio/socket.io-adapter/commit/130f28a43c5aca924aa2c1a318422d21ba03cdac
+
+- RedisAdapter.customHook() and RedisAdapter.customRequest() are removed
+
+Those methods will be replaced by a more intuitive API in a future iteration.
+
+- support for Node.js 8 is dropped
+
+See https://github.com/nodejs/Release
+
+
+
 # [5.4.0](https://github.com/socketio/socket.io-redis/compare/5.3.0...5.4.0) (2020-09-02)
 
 
