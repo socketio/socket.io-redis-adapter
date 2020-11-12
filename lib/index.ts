@@ -346,7 +346,7 @@ export class RedisAdapter extends Adapter {
     if (!onlyLocal) {
       const rawOpts = {
         rooms: [...opts.rooms],
-        except: [...opts.except],
+        except: [...new Set(opts.except)],
         flags: opts.flags,
       };
       const msg = msgpack.encode([this.uid, packet, rawOpts]);

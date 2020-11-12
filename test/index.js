@@ -65,6 +65,26 @@ let socket1, socket2, socket3;
       });
     });
 
+    it("uses a namespace to broadcast to rooms", () => {
+      socket1.join("woot");
+      client2.emit("do broadcast");
+      socket2.on("do broadcast", () => {
+        namespace2.to("woot").emit("broadcast");
+      });
+
+      client1.on("broadcast", () => {
+        setTimeout(done, 100);
+      });
+
+      client2.on("broadcast", () => {
+        throw new Error("Not in room");
+      });
+
+      client3.on("broadcast", () => {
+        throw new Error("Not in room");
+      });
+    });
+
     it("broadcasts to multiple rooms at a time", (done) => {
       function test() {
         client2.emit("do broadcast");
