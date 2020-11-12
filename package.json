@@ -8,23 +8,35 @@
     "url": "git@github.com:socketio/socket.io-redis.git"
   },
   "files": [
-    "index.js"
+    "dist/"
   ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "mocha"
+    "test": "npm run format:check && tsc && nyc mocha test/index.js",
+    "format:check": "prettier --parser typescript --check 'lib/**/*.ts' 'test/**/*.js'",
+    "format:fix": "prettier --parser typescript --write 'lib/**/*.ts' 'test/**/*.js'",
+    "prepack": "tsc"
   },
   "dependencies": {
     "debug": "~4.1.0",
     "notepack.io": "~2.2.0",
     "redis": "^3.0.0",
-    "socket.io-adapter": "~1.1.0",
+    "socket.io-adapter": "~2.0.0",
     "uid2": "0.0.3"
   },
   "devDependencies": {
+    "@types/node": "^14.14.7",
     "expect.js": "0.3.1",
     "ioredis": "^4.0.0",
     "mocha": "^3.4.2",
-    "socket.io": "latest",
-    "socket.io-client": "latest"
+    "nyc": "^15.1.0",
+    "prettier": "^2.1.2",
+    "socket.io": "^3.0.1",
+    "socket.io-client": "^3.0.1",
+    "typescript": "^4.0.5"
+  },
+  "engines": {
+    "node": ">=10.0.0"
   }
 }

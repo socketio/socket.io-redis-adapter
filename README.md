@@ -3,6 +3,27 @@
 [![Build Status](https://travis-ci.org/socketio/socket.io-redis.svg?branch=master)](https://travis-ci.org/socketio/socket.io-redis)
 [![NPM version](https://badge.fury.io/js/socket.io-redis.svg)](http://badge.fury.io/js/socket.io-redis)
 
+## Table of contents
+
+- [How to use](#how-to-use)
+- [Compatibility table](#compatibility-table)
+- [API](#api)
+  - [adapter(uri[, opts])](#adapteruri-opts)
+  - [adapter(opts)](#adapteropts)
+  - [RedisAdapter](#redisadapter)
+    - [RedisAdapter#sockets(rooms: Set<String>)](#redisadaptersocketsrooms-setstring)
+    - [RedisAdapter#allRooms()](#redisadapterallrooms)
+    - [RedisAdapter#remoteJoin(id:String, room:String)](#redisadapterremotejoinidstring-roomstring)
+    - [RedisAdapter#remoteLeave(id:String, room:String)](#redisadapterremoteleaveidstring-roomstring)
+    - [RedisAdapter#remoteDisconnect(id:String, close:Boolean)](#redisadapterremotedisconnectidstring-closeboolean)
+- [Client error handling](#client-error-handling)
+- [Custom client (eg: with authentication)](#custom-client-eg-with-authentication)
+- [With ioredis client](#with-ioredishttpsgithubcomluinioredis-client)
+  - [Cluster example](#cluster-example)
+  - [Sentinel Example](#sentinel-example)
+- [Protocol](#protocol)
+- [License](#license)
+
 ## How to use
 
 ```js
@@ -31,6 +52,14 @@ will properly be broadcast to the clients through the Redis Pub/Sub mechanism.
 
 If you need to emit events to socket.io instances from a non-socket.io
 process, you should use [socket.io-emitter](https://github.com/socketio/socket.io-emitter).
+
+## Compatibility table
+
+| Redis Adapter version | Socket.IO server version |
+|-----------------------| ------------------------ |
+| 4.x                   | 1.x                      |
+| 5.x                   | 2.x                      |
+| 6.x                   | 3.x                      |
 
 ## API
 
@@ -65,94 +94,65 @@ that a regular `Adapter` does not
 - `subClient`
 - `requestsTimeout`
 
-### RedisAdapter#clients(rooms:Array, fn:Function)
+### RedisAdapter#sockets(rooms: Set<String>)
 
-Returns the list of client IDs connected to `rooms` across all nodes. See [Namespace#clients(fn:Function)](https://github.com/socketio/socket.io#namespaceclientsfnfunction)
-
-```js
-io.of('/').adapter.clients((err, clients) => {
-  console.log(clients); // an array containing all connected socket ids
-});
-
-io.of('/').adapter.clients(['room1', 'room2'], (err, clients) => {
-  console.log(clients); // an array containing socket ids in 'room1' and/or 'room2'
-});
-
-// you can also use
-
-io.in('room3').clients((err, clients) => {
-  console.log(clients); // an array containing socket ids in 'room3'
-});
-```
-
-### RedisAdapter#clientRooms(id:String, fn:Function)
-
-Returns the list of rooms the client with the given ID has joined (even on another node).
+Returns the list of socket IDs connected to `rooms` across all nodes. See [Namespace#allSockets()](https://socket.io/docs/v3/server-api/#namespace-allSockets)
 
 ```js
-io.of('/').adapter.clientRooms('<my-id>', (err, rooms) => {
-  if (err) { /* unknown id */ }
-  console.log(rooms); // an array containing every room a given id has joined.
-});
+const sockets = await io.of('/').adapter.sockets();
+console.log(sockets); // a Set containing all the connected socket ids
+
+const sockets = await io.of('/').adapter.sockets(new Set(['room1', 'room2']));
+console.log(sockets); // a Set containing the socket ids in 'room1' or in 'room2'
+
+// this method is also exposed by the Server instance
+const sockets = io.in('room3').allSockets();
+console.log(sockets); // a Set containing the socket ids in 'room3'
 ```
 
-### RedisAdapter#allRooms(fn:Function)
+### RedisAdapter#allRooms()
 
 Returns the list of all rooms.
 
 ```js
-io.of('/').adapter.allRooms((err, rooms) => {
-  console.log(rooms); // an array containing all rooms (accross every node)
-});
+const rooms = await io.of('/').adapter.allRooms();
+console.log(rooms); // a Set containing all rooms (across every node)
 ```
 
-### RedisAdapter#remoteJoin(id:String, room:String, fn:Function)
+### RedisAdapter#remoteJoin(id:String, room:String)
 
-Makes the socket with the given id join the room. The callback will be called once the socket has joined the room, or with an `err` argument if the socket was not found.
-
-```js
-io.of('/').adapter.remoteJoin('<my-id>', 'room1', (err) => {
-  if (err) { /* unknown id */ }
-  // success
-});
-```
-
-### RedisAdapter#remoteLeave(id:String, room:String, fn:Function)
-
-Makes the socket with the given id leave the room. The callback will be called once the socket has left the room, or with an `err` argument if the socket was not found.
+Makes the socket with the given id join the room.
 
 ```js
-io.of('/').adapter.remoteLeave('<my-id>', 'room1', (err) => {
-  if (err) { /* unknown id */ }
-  // success
-});
-```
-
-### RedisAdapter#remoteDisconnect(id:String, close:Boolean, fn:Function)
-
-Makes the socket with the given id to get disconnected. If `close` is set to true, it also closes the underlying socket. The callback will be called once the socket was disconnected, or with an `err` argument if the socket was not found.
-
-```js
-io.of('/').adapter.remoteDisconnect('<my-id>', true, (err) => {
-  if (err) { /* unknown id */ }
-  // success
-});
-```
-
-### RedisAdapter#customRequest(data:Object, fn:Function)
-
-Sends a request to every nodes, that will respond through the `customHook` method.
-
-```js
-// on every node
-io.of('/').adapter.customHook = (data, cb) => {
-  cb('hello ' + data);
+try {
+  await io.of('/').adapter.remoteJoin('<my-id>', 'room1');
+} catch (e) {
+  // the socket was not found
 }
+```
 
-// then
-io.of('/').adapter.customRequest('john', function(err, replies){
-  console.log(replies); // an array ['hello john', ...] with one element per node
-});
+### RedisAdapter#remoteLeave(id:String, room:String)
+
+Makes the socket with the given id leave the room.
+
+```js
+try {
+  await io.of('/').adapter.remoteLeave('<my-id>', 'room1');
+} catch (e) {
+  // the socket was not found
+}
+```
+
+### RedisAdapter#remoteDisconnect(id:String, close:Boolean)
+
+Makes the socket with the given id to get disconnected. If `close` is set to true, it also closes the underlying socket.
+
+```js
+try {
+  await io.of('/').adapter.remoteDisconnect('<my-id>', true);
+} catch (e) {
+  // the socket was not found
+}
 ```
 
 ## Client error handling
@@ -190,7 +190,7 @@ const sub = redis.createClient(port, host, { auth_pass: "pwd" });
 io.adapter(redisAdapter({ pubClient: pub, subClient: sub }));
 ```
 
-## With [ioredis](https://github.com/luin/ioredis) client
+## With ioredis client
 
 ### Cluster example
 
