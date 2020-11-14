@@ -1,3 +1,13 @@
+## [6.0.1](https://github.com/socketio/socket.io-redis/compare/6.0.0...6.0.1) (2020-11-14)
+
+
+### Bug Fixes
+
+* **typings:** properly expose the createAdapter method ([0d2d69c](https://github.com/socketio/socket.io-redis/commit/0d2d69cc78aa3418a7b5a6231a13ea4028dd74a3))
+* fix broadcasting ([#361](https://github.com/socketio/socket.io-redis/issues/361)) ([3334d99](https://github.com/socketio/socket.io-redis/commit/3334d99e1b6e2f80485c73133381a18798b24bc0))
+
+
+
 # [6.0.0](https://github.com/socketio/socket.io-redis/compare/5.4.0...6.0.0) (2020-11-12)
 
 
