@@ -6,6 +6,9 @@
 ## Table of contents
 
 - [How to use](#how-to-use)
+  - [CommonJS](#commonjs)
+  - [ES6 module](#es6-modules)
+  - [TypeScript](#typescript)
 - [Compatibility table](#compatibility-table)
 - [API](#api)
   - [adapter(uri[, opts])](#adapteruri-opts)
@@ -26,14 +29,41 @@
 
 ## How to use
 
+### CommonJS
+
 ```js
 const io = require('socket.io')(3000);
 const redisAdapter = require('socket.io-redis');
 io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 ```
 
-By running socket.io with the `socket.io-redis` adapter you can run
-multiple socket.io instances in different processes or servers that can
+### ES6 modules
+
+```js
+import { Server } from 'socket.io';
+import redisAdapter from 'socket.io-redis';
+
+const io = new Server(3000);
+io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
+```
+
+### TypeScript
+
+```ts
+// npm i -D @types/redis
+import { Server } from 'socket.io';
+import { createAdapter } from 'socket.io-redis';
+import { RedisClient } from 'redis';
+
+const io = new Server(8080);
+const pubClient = new RedisClient({ host: 'localhost', port: 6379 });
+const subClient = pubClient.duplicate();
+
+io.adapter(createAdapter({ pubClient, subClient }));
+```
+
+By running Socket.IO with the `socket.io-redis` adapter you can run
+multiple Socket.IO instances in different processes or servers that can
 all broadcast and emit events to and from each other.
 
 So any of the following commands:
@@ -185,9 +215,9 @@ a connection string.
 ```js
 const redis = require('redis');
 const redisAdapter = require('socket.io-redis');
-const pub = redis.createClient(port, host, { auth_pass: "pwd" });
-const sub = redis.createClient(port, host, { auth_pass: "pwd" });
-io.adapter(redisAdapter({ pubClient: pub, subClient: sub }));
+const pubClient = redis.createClient(port, host, { auth_pass: "pwd" });
+const subClient = pubClient.duplicate();
+io.adapter(redisAdapter({ pubClient, subClient }));
 ```
 
 ## With ioredis client
