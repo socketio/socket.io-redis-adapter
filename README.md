@@ -10,6 +10,7 @@
   - [ES6 module](#es6-modules)
   - [TypeScript](#typescript)
 - [Compatibility table](#compatibility-table)
+- [How does it work under the hood?](#how-does-it-work-under-the-hood)
 - [API](#api)
   - [adapter(uri[, opts])](#adapteruri-opts)
   - [adapter(opts)](#adapteropts)
@@ -78,7 +79,7 @@ io.on('connection', (socket) => {
 });
 ```
 
-will properly be broadcast to the clients through the Redis Pub/Sub mechanism.
+will properly be broadcast to the clients through the Redis [Pub/Sub mechanism](https://redis.io/topics/pubsub).
 
 If you need to emit events to socket.io instances from a non-socket.io
 process, you should use [socket.io-emitter](https://github.com/socketio/socket.io-emitter).
@@ -90,6 +91,61 @@ process, you should use [socket.io-emitter](https://github.com/socketio/socket.i
 | 4.x                   | 1.x                      |
 | 5.x                   | 2.x                      |
 | 6.x                   | 3.x                      |
+
+## How does it work under the hood?
+
+This adapter extends the [in-memory adapter](https://github.com/socketio/socket.io-adapter/) that is included by default with the Socket.IO server.
+
+The in-memory adapter stores the relationships between Sockets and Rooms in two Maps.
+
+When you run `socket.join("room21")`, here's what happens:
+
+```
+console.log(adapter.rooms); // Map { "room21" => Set { "mdpk4kxF5CmhwfCdAHD8" } }
+console.log(adapter.sids); // Map { "mdpk4kxF5CmhwfCdAHD8" => Set { "mdpk4kxF5CmhwfCdAHD8", room21" } }
+// "mdpk4kxF5CmhwfCdAHD8" being the ID of the given socket
+```
+
+Those two Maps are then used when broadcasting:
+
+- a broadcast to all sockets (`io.emit()`) loops through the `sids` Map, and send the packet to all sockets
+- a broadcast to a given room (`io.to("room21").emit()`) loops through the Set in the `rooms` Map, and sends the packet to all matching sockets
+
+The Redis adapter extends the broadcast function of the in-memory adapter: the packet is also [published](https://redis.io/topics/pubsub) to a Redis channel (see [below](#protocol) for the format of the channel name).
+
+Each Socket.IO server receives this packet and broadcasts it to its own list of connected sockets.
+
+To check what's happening on your Redis instance:
+
+```
+$ redis-cli
+127.0.0.1:6379> PSUBSCRIBE *
+Reading messages... (press Ctrl-C to quit)
+1) "psubscribe"
+2) "*"
+3) (integer) 1
+
+1) "pmessage"
+2) "*"
+3) "socket.io#/#" (a broadcast to all sockets or to a list of rooms)
+4) <the packet content>
+
+1) "pmessage"
+2) "*"
+3) "socket.io#/#room21#" (a broadcast to a single room)
+4) <the packet content>
+```
+
+Note: **no data** is stored in Redis itself
+
+There are 3 Redis subscriptions per namespace:
+
+- main channel: `<prefix>#<namespace>#*` (glob)
+- request channel: `<prefix>-request#<namespace>#`
+- response channel: `<prefix>-response#<namespace>#`
+
+The request and response channels are used in the additional methods exposed by the Redis adapter, like [RedisAdapter#allRooms()](#redisadapterallrooms).
+
 
 ## API
 
