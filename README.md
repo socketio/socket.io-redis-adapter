@@ -185,7 +185,7 @@ that a regular `Adapter` does not
 Returns the list of socket IDs connected to `rooms` across all nodes. See [Namespace#allSockets()](https://socket.io/docs/v3/server-api/#namespace-allSockets)
 
 ```js
-const sockets = await io.of('/').adapter.sockets();
+const sockets = await io.of('/').adapter.sockets(new Set());
 console.log(sockets); // a Set containing all the connected socket ids
 
 const sockets = await io.of('/').adapter.sockets(new Set(['room1', 'room2']));
