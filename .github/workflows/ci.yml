@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  styles:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v1
+      - name: Use Node.js 14.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Run lint
+        run: |
+          npm ci
+          npm run format:check
+  test:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v1
+      - name: Use Node.js 14.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Start Redis
+        uses: supercharge/redis-github-action@1.1.0
+        with:
+          redis-version: 6
+      - name: Run test
+        run: |
+          npm ci
+          npm run test
+  deploy:
+    needs: [styles, test]
+    runs-on: self-hosted
+    if: "!contains(github.event.head_commit.message, '[skip ci]') && github.event_name == 'push' && github.ref == 'refs/heads/master'"
+    steps:
+      - uses: actions/checkout@v1
+      - name: Use Node.js 14.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.x
+      - name: Build
+        run: |
+          npm ci
+          npm run prepack
+      - name: deploy branch
+        run: |
+          npx branch-release
