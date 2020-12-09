@@ -17,6 +17,7 @@ enum RequestType {
   REMOTE_JOIN = 2,
   REMOTE_LEAVE = 3,
   REMOTE_DISCONNECT = 4,
+  ALL_COUNT = 5,
 }
 
 interface Request {
@@ -265,6 +266,13 @@ export class RedisAdapter extends Adapter {
 
         this.pubClient.publish(this.responseChannel, response);
         break;
+      case RequestType.ALL_COUNT:
+        response = JSON.stringify({
+          requestId: request.requestId,
+          roomSize: (await super.sockets(new Set(request.rooms))).size,
+        });
+        this.pubClient.publish(this.responseChannel, response);
+        break;
 
       default:
         debug("ignoring unknown request type: %s", request.type);
@@ -340,6 +348,17 @@ export class RedisAdapter extends Adapter {
           request.resolve();
         }
         this.requests.delete(requestId);
+        break;
+      case RequestType.ALL_COUNT:
+        request.msgCount++;
+        request.roomSize += response.roomSize;
+        if (request.msgCount === request.numSub) {
+          clearTimeout(request.timeout);
+          if (request.resolve) {
+            request.resolve(request.roomSize);
+          }
+          this.requests.delete(requestId);
+        }
         break;
 
       default:
@@ -583,6 +602,36 @@ export class RedisAdapter extends Adapter {
         timeout,
       });
 
+      this.pubClient.publish(this.requestChannel, request);
+    });
+  }
+
+  public async allRoomSize(): Promise<number> {
+    const requestId = uid2(6);
+    const numSub = await this.getNumSub();
+    debug('waiting for %d responses to "allRooms" request', numSub);
+    const request = JSON.stringify({
+      requestId,
+      type: RequestType.ALL_COUNT,
+      roomSize: 0,
+    });
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (this.requests.has(requestId)) {
+          reject(
+            new Error("timeout reached while waiting for allRooms response")
+          );
+          this.requests.delete(requestId);
+        }
+      }, this.requestsTimeout);
+      this.requests.set(requestId, {
+        type: RequestType.ALL_COUNT,
+        numSub,
+        resolve,
+        timeout,
+        msgCount: 0,
+        roomSize: 0,
+      });
       this.pubClient.publish(this.requestChannel, request);
     });
   }
