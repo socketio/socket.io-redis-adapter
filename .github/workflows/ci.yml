@@ -37,20 +37,3 @@ jobs:
         run: |
           npm ci
           npm run test
-  deploy:
-    needs: [styles, test]
-    runs-on: ubuntu-18.04
-    if: "!contains(github.event.head_commit.message, '[skip ci]') && github.event_name == 'push' && github.ref == 'refs/heads/master'"
-    steps:
-      - uses: actions/checkout@v1
-      - name: Use Node.js 14.x
-        uses: actions/setup-node@v1
-        with:
-          node-version: 14.x
-      - name: Build
-        run: |
-          npm ci
-          npm run prepack
-      - name: deploy branch
-        run: |
-          npx branch-release
