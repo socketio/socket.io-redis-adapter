@@ -606,7 +606,7 @@ export class RedisAdapter extends Adapter {
     });
   }
 
-  public async allRoomSize(): Promise<number> {
+  public async allRoomSize(rooms: Set<Room>): Promise<number> {
     const requestId = uid2(6);
     const numSub = await this.getNumSub();
     debug('waiting for %d responses to "allRooms" request', numSub);
@@ -614,6 +614,7 @@ export class RedisAdapter extends Adapter {
       requestId,
       type: RequestType.ALL_COUNT,
       roomSize: 0,
+      rooms: [...rooms],
     });
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
