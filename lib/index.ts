@@ -386,6 +386,15 @@ export class RedisAdapter extends Adapter {
     const requestId = uid2(6);
 
     const numSub = await this.getNumSub();
+
+    if(numSub === 0) {
+        debug('no adapters connected - resolving with empty set');
+
+        return new Promise((resolve) => {
+            resolve(new Set());
+        });
+    }
+    
     debug('waiting for %d responses to "sockets" request', numSub);
 
     const request = JSON.stringify({
@@ -426,6 +435,15 @@ export class RedisAdapter extends Adapter {
     const requestId = uid2(6);
 
     const numSub = await this.getNumSub();
+
+    if(numSub === 0) {
+        debug('no adapters connected - resolving with empty set');
+
+        return new Promise((resolve) => {
+            resolve(new Set());
+        });
+    }
+    
     debug('waiting for %d responses to "allRooms" request', numSub);
 
     const request = JSON.stringify({
