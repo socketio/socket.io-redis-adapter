@@ -192,7 +192,7 @@ const sockets = await io.of('/').adapter.sockets(new Set(['room1', 'room2']));
 console.log(sockets); // a Set containing the socket ids in 'room1' or in 'room2'
 
 // this method is also exposed by the Server instance
-const sockets = io.in('room3').allSockets();
+const sockets = await io.in('room3').allSockets();
 console.log(sockets); // a Set containing the socket ids in 'room3'
 ```
 
