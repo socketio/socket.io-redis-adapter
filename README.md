@@ -90,7 +90,8 @@ process, you should use [socket.io-emitter](https://github.com/socketio/socket.i
 |-----------------------| ------------------------ |
 | 4.x                   | 1.x                      |
 | 5.x                   | 2.x                      |
-| 6.x                   | 3.x                      |
+| 6.0.x                 | 3.x                      |
+| 6.1.x and above       | 4.x                      |
 
 ## How does it work under the hood?
 

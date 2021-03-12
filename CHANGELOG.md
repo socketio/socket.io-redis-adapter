@@ -1,3 +1,16 @@
+# [6.1.0](https://github.com/socketio/socket.io-redis/compare/6.0.1...6.1.0) (2021-03-12)
+
+
+### Features
+
+* implement utility methods from Socket.IO v4 ([468c3c8](https://github.com/socketio/socket.io-redis/commit/468c3c8008ddd0c89b2fc2054d874e9e706f0948))
+
+
+### Performance Improvements
+
+* remove one round-trip for the requester ([6c8d770](https://github.com/socketio/socket.io-redis/commit/6c8d7701962bee4acf83568f8e998876d3549fb8))
+
+
 ## [6.0.1](https://github.com/socketio/socket.io-redis/compare/6.0.0...6.0.1) (2020-11-14)
 
 
