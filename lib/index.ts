@@ -203,6 +203,10 @@ export class RedisAdapter extends Adapter {
 
     switch (request.type) {
       case RequestType.SOCKETS:
+        if (this.requests.has(request.requestId)) {
+          return;
+        }
+
         const sockets = await super.sockets(new Set(request.rooms));
 
         response = JSON.stringify({
@@ -214,6 +218,10 @@ export class RedisAdapter extends Adapter {
         break;
 
       case RequestType.ALL_ROOMS:
+        if (this.requests.has(request.requestId)) {
+          return;
+        }
+
         response = JSON.stringify({
           requestId: request.requestId,
           rooms: [...this.rooms.keys()],
@@ -437,11 +445,15 @@ export class RedisAdapter extends Adapter {
    * @param {Set<Room>} rooms   the explicit set of rooms to check.
    */
   public async sockets(rooms: Set<Room>): Promise<Set<SocketId>> {
-    const requestId = uid2(6);
-
+    const localSockets = await super.sockets(rooms);
     const numSub = await this.getNumSub();
     debug('waiting for %d responses to "sockets" request', numSub);
 
+    if (numSub <= 1) {
+      return Promise.resolve(localSockets);
+    }
+
+    const requestId = uid2(6);
     const request = JSON.stringify({
       requestId,
       type: RequestType.SOCKETS,
@@ -463,8 +475,8 @@ export class RedisAdapter extends Adapter {
         numSub,
         resolve,
         timeout,
-        msgCount: 0,
-        sockets: new Set(),
+        msgCount: 1,
+        sockets: localSockets,
       });
 
       this.pubClient.publish(this.requestChannel, request);
@@ -477,11 +489,15 @@ export class RedisAdapter extends Adapter {
    * @public
    */
   public async allRooms(): Promise<Set<Room>> {
-    const requestId = uid2(6);
-
+    const localRooms = new Set(this.rooms.keys());
     const numSub = await this.getNumSub();
     debug('waiting for %d responses to "allRooms" request', numSub);
 
+    if (numSub <= 1) {
+      return localRooms;
+    }
+
+    const requestId = uid2(6);
     const request = JSON.stringify({
       requestId,
       type: RequestType.ALL_ROOMS,
@@ -502,8 +518,8 @@ export class RedisAdapter extends Adapter {
         numSub,
         resolve,
         timeout,
-        msgCount: 0,
-        rooms: new Set(),
+        msgCount: 1,
+        rooms: localRooms,
       });
 
       this.pubClient.publish(this.requestChannel, request);
