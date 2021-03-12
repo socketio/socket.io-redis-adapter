@@ -1,8 +1,9 @@
-const http = require("http").Server;
-const io = require("socket.io");
-const ioc = require("socket.io-client");
-const expect = require("expect.js");
-const adapter = require("..");
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { io as ioc } from "socket.io-client";
+import expect = require("expect.js");
+import { createAdapter } from "..";
+import type { AddressInfo } from "net";
 
 const ioredis = require("ioredis").createClient;
 
@@ -65,7 +66,7 @@ let socket1, socket2, socket3;
       });
     });
 
-    it("uses a namespace to broadcast to rooms", () => {
+    it("uses a namespace to broadcast to rooms", (done) => {
       socket1.join("woot");
       client2.emit("do broadcast");
       socket2.on("do broadcast", () => {
@@ -242,22 +243,24 @@ let socket1, socket2, socket3;
 });
 
 function _create(options) {
-  return (nsp, fn) => {
-    const srv = http();
-    const sio = io(srv);
-    sio.adapter(adapter(typeof options === "function" ? options() : options));
-    srv.listen((err) => {
+  return (nsp, fn?) => {
+    const httpServer = createServer();
+    const sio = new Server(httpServer);
+    sio.adapter(
+      createAdapter(typeof options === "function" ? options() : options)
+    );
+    httpServer.listen((err) => {
       if (err) throw err; // abort tests
       if ("function" == typeof nsp) {
         fn = nsp;
         nsp = "";
       }
       nsp = nsp || "/";
-      const addr = srv.address();
+      const addr = httpServer.address() as AddressInfo;
       const url = "http://localhost:" + addr.port + nsp;
 
       const namespace = sio.of(nsp);
-      const client = ioc(url, { reconnect: false });
+      const client = ioc(url, { reconnection: false });
 
       namespace.on("connection", (socket) => {
         fn(namespace, client, socket);
