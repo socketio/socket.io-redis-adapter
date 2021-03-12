@@ -5,6 +5,8 @@ import expect = require("expect.js");
 import { createAdapter } from "..";
 import type { AddressInfo } from "net";
 
+import "./util";
+
 const ioredis = require("ioredis").createClient;
 
 let namespace1, namespace2, namespace3;
@@ -237,6 +239,111 @@ let socket1, socket2, socket3;
         });
 
         namespace2.adapter.remoteDisconnect(socket1.id, false);
+      });
+
+      describe("socketsJoin", () => {
+        it("makes all socket instances join the specified room", (done) => {
+          namespace1.socketsJoin("room1");
+          setTimeout(() => {
+            expect(socket1.rooms).to.contain("room1");
+            expect(socket2.rooms).to.contain("room1");
+            expect(socket3.rooms).to.contain("room1");
+            done();
+          }, 100);
+        });
+
+        it("makes the matching socket instances join the specified room", (done) => {
+          socket1.join("room1");
+          socket3.join("room1");
+          namespace1.in("room1").socketsJoin("room2");
+          setTimeout(() => {
+            expect(socket1.rooms).to.contain("room2");
+            expect(socket2.rooms).to.not.contain("room2");
+            expect(socket3.rooms).to.contain("room2");
+            done();
+          }, 100);
+        });
+
+        it("makes the given socket instance join the specified room", (done) => {
+          namespace1.in(socket2.id).socketsJoin("room3");
+          setTimeout(() => {
+            expect(socket1.rooms).to.not.contain("room3");
+            expect(socket2.rooms).to.contain("room3");
+            expect(socket3.rooms).to.not.contain("room3");
+            done();
+          }, 100);
+        });
+      });
+
+      describe("socketsLeave", () => {
+        it("makes all socket instances leave the specified room", (done) => {
+          socket2.join("room1");
+          socket3.join("room1");
+          namespace1.socketsLeave("room1");
+          setTimeout(() => {
+            expect(socket1.rooms).to.not.contain("room1");
+            expect(socket2.rooms).to.not.contain("room1");
+            expect(socket3.rooms).to.not.contain("room1");
+            done();
+          }, 100);
+        });
+
+        it("makes the matching socket instances leave the specified room", (done) => {
+          socket1.join(["room1", "room2"]);
+          socket2.join(["room1", "room2"]);
+          socket3.join(["room2"]);
+          namespace1.in("room1").socketsLeave("room2");
+          setTimeout(() => {
+            expect(socket1.rooms).to.not.contain("room2");
+            expect(socket2.rooms).to.not.contain("room2");
+            expect(socket3.rooms).to.contain("room2");
+            done();
+          }, 100);
+        });
+
+        it("makes the given socket instance leave the specified room", (done) => {
+          socket1.join("room3");
+          socket2.join("room3");
+          socket3.join("room3");
+          namespace1.in(socket2.id).socketsLeave("room3");
+          setTimeout(() => {
+            expect(socket1.rooms).to.contain("room3");
+            expect(socket2.rooms).to.not.contain("room3");
+            expect(socket3.rooms).to.contain("room3");
+            done();
+          }, 100);
+        });
+      });
+
+      describe("fetchSockets", () => {
+        it("returns all socket instances", async () => {
+          socket2.data = "test";
+
+          const sockets = await namespace1.fetchSockets();
+          expect(sockets).to.be.an(Array);
+          expect(sockets).to.have.length(3);
+          const remoteSocket1 = sockets.find(
+            (socket) => socket.id === socket1.id
+          );
+          expect(remoteSocket1 === socket1).to.be(true);
+          const remoteSocket2 = sockets.find(
+            (socket) => socket.id === socket2.id
+          );
+          expect(remoteSocket2 === socket2).to.be(false);
+          expect(remoteSocket2.handshake).to.eql(socket2.handshake);
+          expect(remoteSocket2.data).to.eql("test");
+          expect(remoteSocket2.rooms.size).to.eql(1);
+          expect(remoteSocket2.rooms).to.contain(socket2.id);
+        });
+
+        it("returns the matching socket instances", async () => {
+          socket1.join("room1");
+          socket3.join("room1");
+
+          const sockets = await namespace1.in("room1").fetchSockets();
+          expect(sockets).to.be.an(Array);
+          expect(sockets).to.have.length(2);
+        });
       });
     });
   });
