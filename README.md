@@ -1,6 +1,6 @@
 # socket.io-redis
 
-[![Build Status](https://travis-ci.org/socketio/socket.io-redis.svg?branch=master)](https://travis-ci.org/socketio/socket.io-redis)
+[![Build Status](https://github.com/socketio/socket.io-redis/workflows/CI/badge.svg?branch=master)](https://github.com/socketio/socket.io-redis/actions)
 [![NPM version](https://badge.fury.io/js/socket.io-redis.svg)](http://badge.fury.io/js/socket.io-redis)
 
 ## Table of contents
