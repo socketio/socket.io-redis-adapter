@@ -103,7 +103,7 @@ When you run `socket.join("room21")`, here's what happens:
 
 ```
 console.log(adapter.rooms); // Map { "room21" => Set { "mdpk4kxF5CmhwfCdAHD8" } }
-console.log(adapter.sids); // Map { "mdpk4kxF5CmhwfCdAHD8" => Set { "mdpk4kxF5CmhwfCdAHD8", room21" } }
+console.log(adapter.sids); // Map { "mdpk4kxF5CmhwfCdAHD8" => Set { "mdpk4kxF5CmhwfCdAHD8", "room21" } }
 // "mdpk4kxF5CmhwfCdAHD8" being the ID of the given socket
 ```
 
