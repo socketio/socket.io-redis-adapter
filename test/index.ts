@@ -343,6 +343,75 @@ let socket1, socket2, socket3;
           expect(sockets).to.have.length(2);
         });
       });
+
+      describe("serverSideEmit", () => {
+        it("sends an event to other server instances", (done) => {
+          let total = 2;
+          namespace1.serverSideEmit("hello", "world", 1, "2");
+
+          namespace1.on("hello", () => {
+            done(new Error("should not happen"));
+          });
+
+          namespace2.on("hello", (arg1, arg2, arg3) => {
+            expect(arg1).to.eql("world");
+            expect(arg2).to.eql(1);
+            expect(arg3).to.eql("2");
+            --total && done();
+          });
+
+          namespace3.on("hello", () => {
+            --total && done();
+          });
+        });
+
+        it("sends an event and receives a response from the other server instances", (done) => {
+          namespace1.serverSideEmit("hello", (err, response) => {
+            expect(err).to.be(null);
+            expect(response).to.be.an(Array);
+            expect(response).to.contain(2);
+            expect(response).to.contain("3");
+            done();
+          });
+
+          namespace1.on("hello", () => {
+            done(new Error("should not happen"));
+          });
+
+          namespace2.on("hello", (cb) => {
+            cb(2);
+          });
+
+          namespace3.on("hello", (cb) => {
+            cb("3");
+          });
+        });
+
+        it("sends an event but timeout if one server does not respond", (done) => {
+          namespace1.adapter.requestsTimeout = 100;
+
+          namespace1.serverSideEmit("hello", (err, response) => {
+            expect(err.message).to.be(
+              "timeout reached: only 1 responses received out of 2"
+            );
+            expect(response).to.be.an(Array);
+            expect(response).to.contain(2);
+            done();
+          });
+
+          namespace1.on("hello", () => {
+            done(new Error("should not happen"));
+          });
+
+          namespace2.on("hello", (cb) => {
+            cb(2);
+          });
+
+          namespace3.on("hello", () => {
+            // do nothing
+          });
+        });
+      });
     });
   });
 });

@@ -17,6 +17,7 @@ enum RequestType {
   REMOTE_LEAVE = 3,
   REMOTE_DISCONNECT = 4,
   REMOTE_FETCH = 5,
+  SERVER_SIDE_EMIT = 6,
 }
 
 interface Request {
@@ -300,6 +301,37 @@ export class RedisAdapter extends Adapter {
         this.pubClient.publish(this.responseChannel, response);
         break;
 
+      case RequestType.SERVER_SIDE_EMIT:
+        if (request.uid === this.uid) {
+          debug("ignore same uid");
+          return;
+        }
+        const withAck = request.requestId !== undefined;
+        if (!withAck) {
+          this.nsp._onServerSideEmit(request.data);
+          return;
+        }
+        let called = false;
+        const callback = (arg) => {
+          // only one argument is expected
+          if (called) {
+            return;
+          }
+          called = true;
+          debug("calling acknowledgement with %j", arg);
+          this.pubClient.publish(
+            this.responseChannel,
+            JSON.stringify({
+              type: RequestType.SERVER_SIDE_EMIT,
+              requestId: request.requestId,
+              data: arg,
+            })
+          );
+        };
+        request.data.push(callback);
+        this.nsp._onServerSideEmit(request.data);
+        break;
+
       default:
         debug("ignoring unknown request type: %s", request.type);
     }
@@ -379,6 +411,23 @@ export class RedisAdapter extends Adapter {
           request.resolve();
         }
         this.requests.delete(requestId);
+        break;
+
+      case RequestType.SERVER_SIDE_EMIT:
+        request.responses.push(response.data);
+
+        debug(
+          "serverSideEmit: got %d responses out of %d",
+          request.responses.length,
+          request.numSub
+        );
+        if (request.responses.length === request.numSub) {
+          clearTimeout(request.timeout);
+          if (request.resolve) {
+            request.resolve(null, request.responses);
+          }
+          this.requests.delete(requestId);
+        }
         break;
 
       default:
@@ -728,6 +777,67 @@ export class RedisAdapter extends Adapter {
         except: [...opts.except],
       },
       close,
+    });
+
+    this.pubClient.publish(this.requestChannel, request);
+  }
+
+  public serverSideEmit(packet: any[]): void {
+    const withAck = typeof packet[packet.length - 1] === "function";
+
+    if (withAck) {
+      this.serverSideEmitWithAck(packet).catch(() => {
+        // ignore errors
+      });
+      return;
+    }
+
+    const request = JSON.stringify({
+      uid: this.uid,
+      type: RequestType.SERVER_SIDE_EMIT,
+      data: packet,
+    });
+
+    this.pubClient.publish(this.requestChannel, request);
+  }
+
+  private async serverSideEmitWithAck(packet: any[]) {
+    const ack = packet.pop();
+    const numSub = (await this.getNumSub()) - 1; // ignore self
+
+    debug('waiting for %d responses to "serverSideEmit" request', numSub);
+
+    if (numSub <= 0) {
+      return ack(null, []);
+    }
+
+    const requestId = uid2(6);
+    const request = JSON.stringify({
+      uid: this.uid,
+      requestId, // the presence of this attribute defines whether an acknowledgement is needed
+      type: RequestType.SERVER_SIDE_EMIT,
+      data: packet,
+    });
+
+    const timeout = setTimeout(() => {
+      const storedRequest = this.requests.get(requestId);
+      if (storedRequest) {
+        ack(
+          new Error(
+            `timeout reached: only ${storedRequest.responses.length} responses received out of ${storedRequest.numSub}`
+          ),
+          storedRequest.responses
+        );
+        this.requests.delete(requestId);
+      }
+    }, this.requestsTimeout);
+
+    this.requests.set(requestId, {
+      type: RequestType.SERVER_SIDE_EMIT,
+      numSub,
+      timeout,
+      resolve: ack,
+      responses: [],
     });
 
     this.pubClient.publish(this.requestChannel, request);

@@ -4,7 +4,7 @@ import { Assertion, stringify as i } from "expect.js";
 // add support for Set/Map
 const contain = Assertion.prototype.contain;
 Assertion.prototype.contain = function (...args) {
-  if (typeof this.obj === "object") {
+  if (!Array.isArray(this.obj)) {
     args.forEach((obj) => {
       this.assert(
         this.obj.has(obj),
