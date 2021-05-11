@@ -34,7 +34,7 @@
 
 ```js
 const io = require('socket.io')(3000);
-const redisAdapter = require('socket.io-redis');
+const redisAdapter = require('@socket.io/redis-adapter');
 io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 ```
 
@@ -42,7 +42,7 @@ io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 
 ```js
 import { Server } from 'socket.io';
-import redisAdapter from 'socket.io-redis';
+import redisAdapter from '@socket.io/redis-adapter';
 
 const io = new Server(3000);
 io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
@@ -53,7 +53,7 @@ io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 ```ts
 // npm i -D @types/redis
 import { Server } from 'socket.io';
-import { createAdapter } from 'socket.io-redis';
+import { createAdapter } from '@socket.io/redis-adapter';
 import { RedisClient } from 'redis';
 
 const io = new Server(8080);
@@ -63,7 +63,7 @@ const subClient = pubClient.duplicate();
 io.adapter(createAdapter({ pubClient, subClient }));
 ```
 
-By running Socket.IO with the `socket.io-redis` adapter you can run
+By running Socket.IO with the `@socket.io/redis-adapter` adapter you can run
 multiple Socket.IO instances in different processes or servers that can
 all broadcast and emit events to and from each other.
 
@@ -248,7 +248,7 @@ Access the `pubClient` and `subClient` properties of the
 Redis Adapter instance to subscribe to its `error` event:
 
 ```js
-const adapter = require('socket.io-redis')('localhost:6379');
+const adapter = require('@socket.io/redis-adapter')('localhost:6379');
 adapter.pubClient.on('error', function(){});
 adapter.subClient.on('error', function(){});
 ```
@@ -258,7 +258,7 @@ also be forwarded to the adapter instance:
 
 ```js
 const io = require('socket.io')(3000);
-const redisAdapter = require('socket.io-redis');
+const redisAdapter = require('@socket.io/redis-adapter');
 io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
 io.of('/').adapter.on('error', function(){});
 ```
@@ -271,7 +271,7 @@ a connection string.
 
 ```js
 const redis = require('redis');
-const redisAdapter = require('socket.io-redis');
+const redisAdapter = require('@socket.io/redis-adapter');
 const pubClient = redis.createClient(port, host, { auth_pass: "pwd" });
 const subClient = pubClient.duplicate();
 io.adapter(redisAdapter({ pubClient, subClient }));
@@ -283,7 +283,7 @@ io.adapter(redisAdapter({ pubClient, subClient }));
 
 ```js
 const io = require('socket.io')(3000);
-const redisAdapter = require('socket.io-redis');
+const redisAdapter = require('@socket.io/redis-adapter');
 const Redis = require('ioredis');
 
 const startupNodes = [
@@ -307,7 +307,7 @@ io.adapter(redisAdapter({
 
 ```js
 const io = require('socket.io')(3000);
-const redisAdapter = require('socket.io-redis');
+const redisAdapter = require('@socket.io/redis-adapter');
 const Redis = require('ioredis');
 
 const options = {
@@ -326,7 +326,7 @@ io.adapter(redisAdapter({
 
 ## Protocol
 
-The `socket.io-redis` adapter broadcasts and receives messages on particularly named Redis channels. For global broadcasts the channel name is:
+The `@socket.io/redis-adapter` adapter broadcasts and receives messages on particularly named Redis channels. For global broadcasts the channel name is:
 ```
 prefix + '#' + namespace + '#'
 ```
@@ -343,7 +343,7 @@ prefix + '#' + namespace + '#' + room + '#'
 
 A number of other libraries adopt this protocol including:
 
-- [socket.io-emitter](https://github.com/socketio/socket.io-emitter)
+- [socket.io-redis-emitter](https://github.com/socketio/socket.io-redis-emitter)
 - [socket.io-python-emitter](https://github.com/GameXG/socket.io-python-emitter)
 - [socket.io-emitter-go](https://github.com/stackcats/socket.io-emitter-go)
 
