@@ -30,28 +30,41 @@
 
 ## How to use
 
+Installation:
+
+```
+$ npm install @socket.io/redis-adapter redis
+```
+
 ### CommonJS
 
 ```js
 const io = require('socket.io')(3000);
+const { createClient } = require('redis');
 const redisAdapter = require('@socket.io/redis-adapter');
-io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
+
+const pubClient = createClient({ host: 'localhost', port: 6379 });
+const subClient = pubClient.duplicate();
+io.adapter(redisAdapter(pubClient, subClient));
 ```
 
 ### ES6 modules
 
 ```js
 import { Server } from 'socket.io';
+import { createClient } from 'redis';
 import redisAdapter from '@socket.io/redis-adapter';
 
 const io = new Server(3000);
-io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
+const pubClient = createClient({ host: 'localhost', port: 6379 });
+const subClient = pubClient.duplicate();
+io.adapter(redisAdapter(pubClient, subClient));
 ```
 
 ### TypeScript
 
 ```ts
-// npm i -D @types/redis
+// npm i -D redis @types/redis
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { RedisClient } from 'redis';
@@ -60,7 +73,7 @@ const io = new Server(8080);
 const pubClient = new RedisClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
 
-io.adapter(createAdapter({ pubClient, subClient }));
+io.adapter(createAdapter(pubClient, subClient));
 ```
 
 By running Socket.IO with the `@socket.io/redis-adapter` adapter you can run
@@ -150,25 +163,12 @@ The request and response channels are used in the additional methods exposed by 
 
 ## API
 
-### adapter(uri[, opts])
-
-`uri` is a string like `localhost:6379` where your redis server
-is located. For a list of options see below.
-
-### adapter(opts)
+### adapter(pubClient, subClient[, opts])
 
 The following options are allowed:
 
 - `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
-- `host`: host to connect to redis on (`localhost`)
-- `port`: port to connect to redis on (`6379`)
-- `pubClient`: optional, the redis client to publish events on
-- `subClient`: optional, the redis client to subscribe to events on
 - `requestsTimeout`: optional, after this timeout the adapter will stop waiting from responses to request (`5000ms`)
-
-If you decide to supply `pubClient` and `subClient`, make sure you use
-[node_redis](https://github.com/mranney/node_redis) as a client or one
-with an equivalent API.
 
 ### RedisAdapter
 
@@ -242,41 +242,6 @@ try {
 }
 ```
 
-## Client error handling
-
-Access the `pubClient` and `subClient` properties of the
-Redis Adapter instance to subscribe to its `error` event:
-
-```js
-const adapter = require('@socket.io/redis-adapter')('localhost:6379');
-adapter.pubClient.on('error', function(){});
-adapter.subClient.on('error', function(){});
-```
-
-The errors emitted from `pubClient` and `subClient` will
-also be forwarded to the adapter instance:
-
-```js
-const io = require('socket.io')(3000);
-const redisAdapter = require('@socket.io/redis-adapter');
-io.adapter(redisAdapter({ host: 'localhost', port: 6379 }));
-io.of('/').adapter.on('error', function(){});
-```
-
-## Custom client (eg: with authentication)
-
-If you need to create a redisAdapter to a redis instance
-that has a password, use pub/sub options instead of passing
-a connection string.
-
-```js
-const redis = require('redis');
-const redisAdapter = require('@socket.io/redis-adapter');
-const pubClient = redis.createClient(port, host, { auth_pass: "pwd" });
-const subClient = pubClient.duplicate();
-io.adapter(redisAdapter({ pubClient, subClient }));
-```
-
 ## With ioredis client
 
 ### Cluster example
@@ -297,10 +262,10 @@ const startupNodes = [
   }
 ];
 
-io.adapter(redisAdapter({
-  pubClient: new Redis.Cluster(startupNodes),
-  subClient: new Redis.Cluster(startupNodes)
-}));
+const pubClient = new Redis.Cluster(startupNodes);
+const subClient = pubClient.duplicate();
+
+io.adapter(redisAdapter(pubClient, subClient));
 ```
 
 ### Sentinel Example
@@ -318,10 +283,10 @@ const options = {
   name: 'master01'
 };
 
-io.adapter(redisAdapter({
-  pubClient: new Redis(options),
-  subClient: new Redis(options)
-}));
+const pubClient = new Redis(options);
+const subClient = pubClient.duplicate();
+
+io.adapter(redisAdapter(pubClient, subClient));
 ```
 
 ## Protocol

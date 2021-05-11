@@ -1,5 +1,4 @@
 import uid2 = require("uid2");
-import { createClient } from "redis";
 import msgpack = require("notepack.io");
 import { Adapter, BroadcastOptions, Room, SocketId } from "socket.io-adapter";
 
@@ -36,59 +35,33 @@ export interface RedisAdapterOptions {
    */
   key: string;
   /**
-   * the redis client to publish events on
-   */
-  pubClient: any;
-  /**
-   * the redis client to subscribe to events on
-   */
-  subClient: any;
-  /**
    * after this timeout the adapter will stop waiting from responses to request
    * @default 5000
    */
   requestsTimeout: number;
 }
 
-function createRedisClient(uri, opts) {
-  if (uri) {
-    // handle uri string
-    return createClient(uri, opts);
-  } else {
-    return createClient(opts);
-  }
-}
-
 /**
- * Returns a redis Adapter class.
+ * Returns a function that will create a RedisAdapter instance.
  *
- * @param {String} uri - optional, redis uri
- * @param {String} opts - redis connection options
- * @return {RedisAdapter} adapter
+ * @param pubClient - a Redis client that will be used to publish messages
+ * @param subClient - a Redis client that will be used to receive messages (put in subscribed state)
+ * @param opts - additional options
  *
  * @public
  */
-export function createAdapter(uri: string, opts?: Partial<RedisAdapterOptions>);
-export function createAdapter(opts: Partial<RedisAdapterOptions>);
 export function createAdapter(
-  uri?: any,
-  opts: Partial<RedisAdapterOptions> = {}
+  pubClient: any,
+  subClient: any,
+  opts?: Partial<RedisAdapterOptions>
 ) {
-  // handle options only
-  if (typeof uri === "object") {
-    opts = uri;
-    uri = null;
-  }
-
   return function (nsp) {
-    return new RedisAdapter(nsp, uri, opts);
+    return new RedisAdapter(nsp, pubClient, subClient, opts);
   };
 }
 
 export class RedisAdapter extends Adapter {
   public readonly uid;
-  public readonly pubClient: any;
-  public readonly subClient: any;
   public readonly requestsTimeout: number;
 
   private readonly channel: string;
@@ -100,17 +73,21 @@ export class RedisAdapter extends Adapter {
    * Adapter constructor.
    *
    * @param nsp - the namespace
-   * @param uri - the url of the Redis server
-   * @param opts - the options for both the Redis adapter and the Redis client
+   * @param pubClient - a Redis client that will be used to publish messages
+   * @param subClient - a Redis client that will be used to receive messages (put in subscribed state)
+   * @param opts - additional options
    *
    * @public
    */
-  constructor(nsp, uri: string, opts: Partial<RedisAdapterOptions> = {}) {
+  constructor(
+    nsp: any,
+    readonly pubClient: any,
+    readonly subClient: any,
+    opts: Partial<RedisAdapterOptions> = {}
+  ) {
     super(nsp);
 
     this.uid = uid2(6);
-    this.pubClient = opts.pubClient || createRedisClient(uri, opts);
-    this.subClient = opts.subClient || createRedisClient(uri, opts);
     this.requestsTimeout = opts.requestsTimeout || 5000;
 
     const prefix = opts.key || "socket.io";

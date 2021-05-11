@@ -4,6 +4,7 @@ import { io as ioc } from "socket.io-client";
 import expect = require("expect.js");
 import { createAdapter } from "..";
 import type { AddressInfo } from "net";
+import { createClient } from "redis";
 
 import "./util";
 
@@ -16,20 +17,17 @@ let socket1, socket2, socket3;
 [
   {
     name: "socket.io-redis",
+    createRedisClient: createClient,
   },
   {
     name: "socket.io-redis with ioredis",
-    options: () => ({
-      pubClient: ioredis(),
-      subClient: ioredis(),
-    }),
+    createRedisClient: ioredis,
   },
 ].forEach((suite) => {
   const name = suite.name;
-  const options = suite.options;
 
   describe(name, () => {
-    beforeEach(init(options));
+    beforeEach(init(suite.createRedisClient));
     afterEach(cleanup);
 
     it("broadcasts", (done) => {
@@ -349,13 +347,12 @@ let socket1, socket2, socket3;
   });
 });
 
-function _create(options) {
+function _create(createRedisClient) {
   return (nsp, fn?) => {
     const httpServer = createServer();
     const sio = new Server(httpServer);
-    sio.adapter(
-      createAdapter(typeof options === "function" ? options() : options)
-    );
+    // @ts-ignore
+    sio.adapter(createAdapter(createRedisClient(), createRedisClient()));
     httpServer.listen((err) => {
       if (err) throw err; // abort tests
       if ("function" == typeof nsp) {
