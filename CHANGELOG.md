@@ -1,3 +1,33 @@
+# [7.0.0](https://github.com/socketio/socket.io-redis-adapter/compare/6.1.0...7.0.0) (2021-05-11)
+
+
+### Features
+
+* implement the serverSideEmit functionality ([3a0f29f](https://github.com/socketio/socket.io-redis-adapter/commit/3a0f29fbe322f280f48f92b3aac0fcc94d698ee8))
+* remove direct redis dependency ([c68a47c](https://github.com/socketio/socket.io-redis-adapter/commit/c68a47c4948554125dac0e317e19947a4d3d3251))
+* rename the package to `@socket.io/redis-adapter` ([3cac178](https://github.com/socketio/socket.io-redis-adapter/commit/3cac1789c558a3ece5bb222d73f097952b55c340))
+
+
+### BREAKING CHANGES
+
+* the library will no longer create Redis clients on behalf of the user.
+
+Before:
+
+```js
+io.adapter(redisAdapter({ host: "localhost", port: 6379 }));
+```
+
+After:
+
+```js
+const pubClient = createClient({ host: "localhost", port: 6379 });
+const subClient = pubClient.duplicate();
+
+io.adapter(redisAdapter(pubClient, subClient));
+```
+
+
 # [6.1.0](https://github.com/socketio/socket.io-redis/compare/6.0.1...6.1.0) (2021-03-12)
 
 
