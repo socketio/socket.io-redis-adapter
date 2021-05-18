@@ -1,3 +1,6 @@
+## [6.1.1](https://github.com/socketio/socket.io-redis/compare/6.1.0...6.1.1) (2021-05-18)
+
+
 # [6.1.0](https://github.com/socketio/socket.io-redis/compare/6.0.1...6.1.0) (2021-03-12)
 
 
