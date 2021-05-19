@@ -411,6 +411,80 @@ let socket1, socket2, socket3;
             // do nothing
           });
         });
+
+        it("sends an event but timeout if there are external non-participating subcribers", (done) => {
+          namespace1.adapter.requestsTimeout = 100;
+
+          const spySub = suite.createRedisClient();
+          done = ((done) => (...rest) => {
+            spySub.quit();
+            done(...rest);
+          })(done);
+
+          spySub.subscribe(namespace1.adapter.participantChannel, (err) => {
+            expect(err).to.not.be.ok();
+
+            namespace1.serverSideEmit("hello", (err, response) => {
+              expect(err).to.be.ok();
+              expect(err.message).to.be(
+                "timeout reached: only 2 responses received out of 3"
+              );
+              expect(response).to.be.an(Array);
+              expect(response).to.have.length(2);
+              expect(response).to.contain(2);
+              expect(response).to.contain(3);
+              done();
+            });
+
+            namespace1.on("hello", () => {
+              done(new Error("should not happen"));
+            });
+
+            namespace2.on("hello", (cb) => {
+              cb(2);
+            });
+
+            namespace3.on("hello", (cb) => {
+              cb(3);
+            });
+          });
+        });
+
+        it("sends an event and receives a response from the other server instances with external non-participating subcribers on the request/response channels", (done) => {
+          namespace1.adapter.requestsTimeout = 100;
+          const { requestChannel, responseChannel } = namespace1.adapter;
+
+          const spySub = suite.createRedisClient();
+          done = ((done) => (...rest) => {
+            spySub.quit();
+            done(...rest);
+          })(done);
+
+          spySub.subscribe([requestChannel, responseChannel], (err) => {
+            expect(err).to.not.be.ok();
+
+            namespace1.serverSideEmit("hello", (err, response) => {
+              expect(err).to.not.be.ok();
+              expect(response).to.be.an(Array);
+              expect(response).to.have.length(2);
+              expect(response).to.contain(2);
+              expect(response).to.contain(3);
+              done();
+            });
+
+            namespace1.on("hello", () => {
+              done(new Error("should not happen"));
+            });
+
+            namespace2.on("hello", (cb) => {
+              cb(2);
+            });
+
+            namespace3.on("hello", (cb) => {
+              cb(3);
+            });
+          });
+        });
       });
     });
   });
