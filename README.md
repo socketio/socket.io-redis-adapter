@@ -1,7 +1,7 @@
 # socket.io-redis
 
 [![Build Status](https://github.com/socketio/socket.io-redis/workflows/CI/badge.svg?branch=master)](https://github.com/socketio/socket.io-redis/actions)
-[![NPM version](https://badge.fury.io/js/socket.io-redis.svg)](http://badge.fury.io/js/socket.io-redis)
+[![npm version](https://badge.fury.io/js/%40socket.io%2Fredis-adapter.svg)](https://badge.fury.io/js/%40socket.io%2Fredis-adapter)
 
 ## Table of contents
 
