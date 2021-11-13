@@ -26,6 +26,7 @@
   - [Cluster example](#cluster-example)
   - [Sentinel Example](#sentinel-example)
 - [Protocol](#protocol)
+- [Migrating from `socket.io-redis`](#migrating-from-socketio-redis)
 - [License](#license)
 
 ## How to use
@@ -311,6 +312,34 @@ A number of other libraries adopt this protocol including:
 - [socket.io-redis-emitter](https://github.com/socketio/socket.io-redis-emitter)
 - [socket.io-python-emitter](https://github.com/GameXG/socket.io-python-emitter)
 - [socket.io-emitter-go](https://github.com/stackcats/socket.io-emitter-go)
+
+## Migrating from `socket.io-redis`
+
+The package was renamed from `socket.io-redis` to `@socket.io/redis-adapter` in [v7](https://github.com/socketio/socket.io-redis-adapter/releases/tag/7.0.0), in order to match the name of the Redis emitter (`@socket.io/redis-emitter`).
+
+To migrate to the new package, you'll need to make sure to provide your own Redis clients, as the package will no longer create Redis clients on behalf of the user.
+
+Before:
+
+```js
+const redisAdapter = require("socket.io-redis");
+
+io.adapter(redisAdapter({ host: "localhost", port: 6379 }));
+```
+
+After:
+
+```js
+const { createClient } = require("redis");
+const { createAdapter } = require("@socket.io/redis-adapter");
+
+const pubClient = createClient({ host: "localhost", port: 6379 });
+const subClient = pubClient.duplicate();
+
+io.adapter(createAdapter(pubClient, subClient));
+```
+
+Please note that the communication protocol between the Socket.IO servers has not been updated, so you can have some servers with `socket.io-redis` and some others with `@socket.io/redis-adapter` at the same time.
 
 ## License
 
