@@ -1,3 +1,13 @@
+## [7.0.1](https://github.com/socketio/socket.io-redis-adapter/compare/7.0.0...7.0.1) (2021-11-15)
+
+
+### Bug Fixes
+
+* allow numeric rooms ([214b5d1](https://github.com/socketio/socket.io-redis-adapter/commit/214b5d1a8d4f1bc037712ed53dceba7ee55ea643))
+* ignore sessionStore in the fetchSockets method ([c5dce43](https://github.com/socketio/socket.io-redis-adapter/commit/c5dce438950491b608ed8ed46369b8f120fa82e4))
+
+
+
 # [7.0.0](https://github.com/socketio/socket.io-redis-adapter/compare/6.1.0...7.0.0) (2021-05-11)
 
 
