@@ -14,6 +14,8 @@ let namespace1, namespace2, namespace3;
 let client1, client2, client3;
 let socket1, socket2, socket3;
 
+const shouldNotHappen = (done) => () => done(new Error("should not happen"));
+
 [
   {
     name: "socket.io-redis",
@@ -44,7 +46,7 @@ let socket1, socket2, socket3;
       socket2.broadcast.emit("woot", [], { a: "b" }, buf, array);
     });
 
-    it("broadcasts to rooms", (done) => {
+    it("broadcasts to a room", (done) => {
       socket1.join("woot");
       client2.emit("do broadcast");
 
@@ -64,6 +66,15 @@ let socket1, socket2, socket3;
       client3.on("broadcast", () => {
         throw new Error("Not in room");
       });
+    });
+
+    it("broadcasts to a numeric room", (done) => {
+      socket1.join(123);
+      namespace2.to(123).emit("broadcast");
+
+      client1.on("broadcast", done);
+      client2.on("broadcast", shouldNotHappen(done));
+      client3.on("broadcast", shouldNotHappen(done));
     });
 
     it("uses a namespace to broadcast to rooms", (done) => {

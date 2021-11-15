@@ -29,6 +29,8 @@ interface Request {
   [other: string]: any;
 }
 
+const isNumeric = (str) => !isNaN(str) && !isNaN(parseFloat(str));
+
 export interface RedisAdapterOptions {
   /**
    * the name of the key to pub/sub events on as prefix
@@ -130,7 +132,7 @@ export class RedisAdapter extends Adapter {
     }
 
     const room = channel.slice(this.channel.length, -1);
-    if (room !== "" && !this.rooms.has(room)) {
+    if (room !== "" && !this.hasRoom(room)) {
       return debug("ignore unknown room %s", room);
     }
 
@@ -150,6 +152,12 @@ export class RedisAdapter extends Adapter {
     opts.except = new Set(opts.except);
 
     super.broadcast(packet, opts);
+  }
+
+  private hasRoom(room): boolean {
+    // @ts-ignore
+    const hasNumericRoom = isNumeric(room) && this.rooms.has(parseFloat(room));
+    return hasNumericRoom || this.rooms.has(room);
   }
 
   /**
