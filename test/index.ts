@@ -1,6 +1,6 @@
 import { createServer } from "http";
-import { Server } from "socket.io";
-import { io as ioc } from "socket.io-client";
+import { Server, Socket as ServerSocket } from "socket.io";
+import { io as ioc, Socket as ClientSocket } from "socket.io-client";
 import expect = require("expect.js");
 import { createAdapter } from "..";
 import type { AddressInfo } from "net";
@@ -11,8 +11,8 @@ import "./util";
 const ioredis = require("ioredis").createClient;
 
 let namespace1, namespace2, namespace3;
-let client1, client2, client3;
-let socket1, socket2, socket3;
+let client1: ClientSocket, client2: ClientSocket, client3: ClientSocket;
+let socket1: ServerSocket, socket2: ServerSocket, socket3: ServerSocket;
 
 const shouldNotHappen = (done) => () => done(new Error("should not happen"));
 
@@ -41,34 +41,22 @@ const shouldNotHappen = (done) => () => done(new Error("should not happen"));
         done();
       });
 
-      var buf = Buffer.from("asdfasdf", "utf8");
-      var array = Uint8Array.of(1, 2, 3, 4);
+      const buf = Buffer.from("asdfasdf", "utf8");
+      const array = Uint8Array.of(1, 2, 3, 4);
       socket2.broadcast.emit("woot", [], { a: "b" }, buf, array);
     });
 
     it("broadcasts to a room", (done) => {
       socket1.join("woot");
-      client2.emit("do broadcast");
+      socket2.broadcast.to("woot").emit("broadcast");
 
-      // does not join, performs broadcast
-      socket2.on("do broadcast", () => {
-        socket2.broadcast.to("woot").emit("broadcast");
-      });
-
-      client1.on("broadcast", () => {
-        setTimeout(done, 100);
-      });
-
-      client2.on("broadcast", () => {
-        throw new Error("Not in room");
-      });
-
-      client3.on("broadcast", () => {
-        throw new Error("Not in room");
-      });
+      client1.on("broadcast", done);
+      client2.on("broadcast", shouldNotHappen(done));
+      client3.on("broadcast", shouldNotHappen(done));
     });
 
     it("broadcasts to a numeric room", (done) => {
+      // @ts-ignore
       socket1.join(123);
       namespace2.to(123).emit("broadcast");
 
@@ -79,95 +67,53 @@ const shouldNotHappen = (done) => () => done(new Error("should not happen"));
 
     it("uses a namespace to broadcast to rooms", (done) => {
       socket1.join("woot");
-      client2.emit("do broadcast");
-      socket2.on("do broadcast", () => {
-        namespace2.to("woot").emit("broadcast");
-      });
+      namespace2.to("woot").emit("broadcast");
 
-      client1.on("broadcast", () => {
-        setTimeout(done, 100);
-      });
-
-      client2.on("broadcast", () => {
-        throw new Error("Not in room");
-      });
-
-      client3.on("broadcast", () => {
-        throw new Error("Not in room");
-      });
+      client1.on("broadcast", done);
+      client2.on("broadcast", shouldNotHappen(done));
+      client3.on("broadcast", shouldNotHappen(done));
     });
 
     it("broadcasts to multiple rooms at a time", (done) => {
-      function test() {
-        client2.emit("do broadcast");
-      }
-
       socket1.join(["foo", "bar"]);
-      client2.emit("do broadcast");
-
-      socket2.on("do broadcast", () => {
-        socket2.broadcast.to("foo").to("bar").emit("broadcast");
-      });
+      socket2.broadcast.to("foo").to("bar").emit("broadcast");
 
       let called = false;
       client1.on("broadcast", () => {
-        if (called) return done(new Error("Called more than once"));
+        if (called) return shouldNotHappen(done);
         called = true;
-        setTimeout(done, 100);
+        done();
       });
 
-      client2.on("broadcast", () => {
-        throw new Error("Not in room");
-      });
-
-      client3.on("broadcast", () => {
-        throw new Error("Not in room");
-      });
+      client2.on("broadcast", shouldNotHappen(done));
+      client3.on("broadcast", shouldNotHappen(done));
     });
 
     it("doesn't broadcast when using the local flag", (done) => {
       socket1.join("woot");
       socket2.join("woot");
-      client2.emit("do broadcast");
+      namespace2.local.to("woot").emit("local broadcast");
 
-      socket2.on("do broadcast", () => {
-        namespace2.local.to("woot").emit("local broadcast");
-      });
-
-      client1.on("local broadcast", () => {
-        throw new Error("Not in local server");
-      });
-
-      client2.on("local broadcast", () => {
-        setTimeout(done, 100);
-      });
-
-      client3.on("local broadcast", () => {
-        throw new Error("Not in local server");
-      });
+      client1.on("local broadcast", shouldNotHappen(done));
+      client2.on("local broadcast", done);
+      client3.on("local broadcast", shouldNotHappen(done));
     });
 
     it("doesn't broadcast to left rooms", (done) => {
       socket1.join("woot");
       socket1.leave("woot");
+      socket2.broadcast.to("woot").emit("broadcast");
 
-      socket2.on("do broadcast", () => {
-        socket2.broadcast.to("woot").emit("broadcast");
-
-        setTimeout(done, 100);
-      });
-
-      client2.emit("do broadcast");
-
-      client1.on("broadcast", () => {
-        throw new Error("Not in room");
-      });
+      client1.on("broadcast", shouldNotHappen(done));
+      done();
     });
 
     it("deletes rooms upon disconnection", (done) => {
       socket1.join("woot");
       socket1.on("disconnect", () => {
+        // @ts-ignore
         expect(socket1.adapter.sids[socket1.id]).to.be(undefined);
+        // @ts-ignore
         expect(socket1.adapter.rooms).to.be.empty();
         client1.disconnect();
         done();
@@ -327,6 +273,7 @@ const shouldNotHappen = (done) => () => done(new Error("should not happen"));
       describe("fetchSockets", () => {
         it("returns all socket instances", async () => {
           socket2.data = "test";
+          // @ts-ignore
           socket2.handshake.sessionStore = "not included";
 
           const sockets = await namespace1.fetchSockets();
@@ -340,6 +287,7 @@ const shouldNotHappen = (done) => () => done(new Error("should not happen"));
             (socket) => socket.id === socket2.id
           );
           expect(remoteSocket2 === socket2).to.be(false);
+          // @ts-ignore
           delete socket2.handshake.sessionStore;
           expect(remoteSocket2.handshake).to.eql(socket2.handshake);
           expect(remoteSocket2.data).to.eql("test");
