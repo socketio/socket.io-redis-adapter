@@ -327,6 +327,7 @@ const shouldNotHappen = (done) => () => done(new Error("should not happen"));
       describe("fetchSockets", () => {
         it("returns all socket instances", async () => {
           socket2.data = "test";
+          socket2.handshake.sessionStore = "not included";
 
           const sockets = await namespace1.fetchSockets();
           expect(sockets).to.be.an(Array);
@@ -339,6 +340,7 @@ const shouldNotHappen = (done) => () => done(new Error("should not happen"));
             (socket) => socket.id === socket2.id
           );
           expect(remoteSocket2 === socket2).to.be(false);
+          delete socket2.handshake.sessionStore;
           expect(remoteSocket2.handshake).to.eql(socket2.handshake);
           expect(remoteSocket2.data).to.eql("test");
           expect(remoteSocket2.rooms.size).to.eql(1);

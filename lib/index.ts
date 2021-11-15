@@ -298,12 +298,16 @@ export class RedisAdapter extends Adapter {
 
         response = JSON.stringify({
           requestId: request.requestId,
-          sockets: localSockets.map((socket) => ({
-            id: socket.id,
-            handshake: socket.handshake,
-            rooms: [...socket.rooms],
-            data: socket.data,
-          })),
+          sockets: localSockets.map((socket) => {
+            // remove sessionStore from handshake, as it may contain circular references
+            const { sessionStore, ...handshake } = socket.handshake;
+            return {
+              id: socket.id,
+              handshake,
+              rooms: [...socket.rooms],
+              data: socket.data,
+            };
+          }),
         });
 
         this.pubClient.publish(this.responseChannel, response);
