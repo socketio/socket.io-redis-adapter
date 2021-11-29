@@ -1,3 +1,14 @@
+# [7.1.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.0.1...7.1.0) (2021-11-29)
+
+
+### Features
+
+* add support for redis v4 ([aa681b3](https://github.com/socketio/socket.io-redis-adapter/commit/aa681b3bc914358d206ab35761d291a466ac18da))
+* do not emit "error" events anymore ([8e5c84f](https://github.com/socketio/socket.io-redis-adapter/commit/8e5c84f7edcda85a6f7e36c04ebd74152c1cade1))
+* send response to the requesting node only ([f66de11](https://github.com/socketio/socket.io-redis-adapter/commit/f66de114a4581b692da759015def0373c619aab7))
+
+
+
 ## [7.0.1](https://github.com/socketio/socket.io-redis-adapter/compare/7.0.0...7.0.1) (2021-11-15)
 
 
