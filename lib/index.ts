@@ -114,12 +114,6 @@ export class RedisAdapter extends Adapter {
     this.responseChannel = prefix + "-response#" + this.nsp.name + "#";
     const specificResponseChannel = this.responseChannel + this.uid + "#";
 
-    const onError = (err) => {
-      if (err) {
-        this.emit("error", err);
-      }
-    };
-
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
       this.subClient.pSubscribe(
@@ -136,18 +130,27 @@ export class RedisAdapter extends Adapter {
         }
       );
     } else {
-      this.subClient.psubscribe(this.channel + "*", onError);
+      this.subClient.psubscribe(this.channel + "*");
       this.subClient.on("pmessageBuffer", this.onmessage.bind(this));
 
-      this.subClient.subscribe(
-        [this.requestChannel, this.responseChannel, specificResponseChannel],
-        onError
-      );
+      this.subClient.subscribe([
+        this.requestChannel,
+        this.responseChannel,
+        specificResponseChannel,
+      ]);
       this.subClient.on("messageBuffer", this.onrequest.bind(this));
     }
 
-    this.pubClient.on("error", onError);
-    this.subClient.on("error", onError);
+    const registerFriendlyErrorHandler = (redisClient) => {
+      redisClient.on("error", () => {
+        if (redisClient.listenerCount("error") === 1) {
+          console.warn("missing 'error' handler on this Redis client");
+        }
+      });
+    };
+
+    registerFriendlyErrorHandler(this.pubClient);
+    registerFriendlyErrorHandler(this.subClient);
   }
 
   /**
@@ -211,7 +214,7 @@ export class RedisAdapter extends Adapter {
     try {
       request = JSON.parse(msg);
     } catch (err) {
-      this.emit("error", err);
+      debug("ignoring malformed request");
       return;
     }
 
@@ -406,7 +409,7 @@ export class RedisAdapter extends Adapter {
     try {
       response = JSON.parse(msg);
     } catch (err) {
-      this.emit("error", err);
+      debug("ignoring malformed response");
       return;
     }
 
