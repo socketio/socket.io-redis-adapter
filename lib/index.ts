@@ -105,14 +105,31 @@ export class RedisAdapter extends Adapter {
       }
     };
 
-    this.subClient.psubscribe(this.channel + "*", onError);
-    this.subClient.on("pmessageBuffer", this.onmessage.bind(this));
+    const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
+    if (isRedisV4) {
+      this.subClient.pSubscribe(
+        this.channel + "*",
+        (msg, channel) => {
+          this.onmessage(null, channel, msg);
+        },
+        true
+      );
+      this.subClient.subscribe(
+        [this.requestChannel, this.responseChannel],
+        (msg, channel) => {
+          this.onrequest(channel, msg);
+        }
+      );
+    } else {
+      this.subClient.psubscribe(this.channel + "*", onError);
+      this.subClient.on("pmessageBuffer", this.onmessage.bind(this));
 
-    this.subClient.subscribe(
-      [this.requestChannel, this.responseChannel],
-      onError
-    );
-    this.subClient.on("messageBuffer", this.onrequest.bind(this));
+      this.subClient.subscribe(
+        [this.requestChannel, this.responseChannel],
+        onError
+      );
+      this.subClient.on("messageBuffer", this.onrequest.bind(this));
+    }
 
     this.pubClient.on("error", onError);
     this.subClient.on("error", onError);
@@ -876,6 +893,10 @@ export class RedisAdapter extends Adapter {
         });
         return numSub;
       });
+    } else if (typeof this.pubClient.pSubscribe === "function") {
+      return this.pubClient
+        .sendCommand(["pubsub", "numsub", this.requestChannel])
+        .then((res) => parseInt(res[1], 10));
     } else {
       // RedisClient or Redis
       return new Promise((resolve, reject) => {
