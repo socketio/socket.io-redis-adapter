@@ -13,8 +13,9 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "npm run format:check && tsc && npm run test:redis-v4 && npm run test:redis-v3 && npm run test:ioredis",
+    "test": "npm run format:check && tsc && npm run test:redis-v4 && npm run test:redis-v4-specific-channel && npm run test:redis-v3 && npm run test:ioredis",
     "test:redis-v4": "nyc mocha --bail --require ts-node/register test/index.ts",
+    "test:redis-v4-specific-channel": "SPECIFIC_CHANNEL=1 nyc mocha --bail --require ts-node/register test/index.ts",
     "test:redis-v3": "REDIS_CLIENT=redis-v3 nyc mocha --bail --require ts-node/register test/index.ts",
     "test:ioredis": "REDIS_CLIENT=ioredis nyc mocha --bail --require ts-node/register test/index.ts",
     "format:check": "prettier --parser typescript --check 'lib/**/*.ts' 'test/**/*.ts'",

@@ -42,6 +42,18 @@ export interface RedisAdapterOptions {
    * @default 5000
    */
   requestsTimeout: number;
+  /**
+   * Whether to publish a response to the channel specific to the requesting node.
+   *
+   * - if true, the response will be published to `${key}-request#${nsp}#${uid}#`
+   * - if false, the response will be published to `${key}-request#${nsp}#`
+   *
+   * This option currently defaults to false for backward compatibility, but will be set to true in the next major
+   * release.
+   *
+   * @default false
+   */
+  publishOnSpecificResponseChannel: boolean;
 }
 
 /**
@@ -66,6 +78,7 @@ export function createAdapter(
 export class RedisAdapter extends Adapter {
   public readonly uid;
   public readonly requestsTimeout: number;
+  public readonly publishOnSpecificResponseChannel: boolean;
 
   private readonly channel: string;
   private readonly requestChannel: string;
@@ -92,12 +105,14 @@ export class RedisAdapter extends Adapter {
 
     this.uid = uid2(6);
     this.requestsTimeout = opts.requestsTimeout || 5000;
+    this.publishOnSpecificResponseChannel = !!opts.publishOnSpecificResponseChannel;
 
     const prefix = opts.key || "socket.io";
 
     this.channel = prefix + "#" + nsp.name + "#";
     this.requestChannel = prefix + "-request#" + this.nsp.name + "#";
     this.responseChannel = prefix + "-response#" + this.nsp.name + "#";
+    const specificResponseChannel = this.responseChannel + this.uid + "#";
 
     const onError = (err) => {
       if (err) {
@@ -115,7 +130,7 @@ export class RedisAdapter extends Adapter {
         true
       );
       this.subClient.subscribe(
-        [this.requestChannel, this.responseChannel],
+        [this.requestChannel, this.responseChannel, specificResponseChannel],
         (msg, channel) => {
           this.onrequest(channel, msg);
         }
@@ -125,7 +140,7 @@ export class RedisAdapter extends Adapter {
       this.subClient.on("pmessageBuffer", this.onmessage.bind(this));
 
       this.subClient.subscribe(
-        [this.requestChannel, this.responseChannel],
+        [this.requestChannel, this.responseChannel, specificResponseChannel],
         onError
       );
       this.subClient.on("messageBuffer", this.onrequest.bind(this));
@@ -217,7 +232,7 @@ export class RedisAdapter extends Adapter {
           sockets: [...sockets],
         });
 
-        this.pubClient.publish(this.responseChannel, response);
+        this.publishResponse(request, response);
         break;
 
       case RequestType.ALL_ROOMS:
@@ -230,7 +245,7 @@ export class RedisAdapter extends Adapter {
           rooms: [...this.rooms.keys()],
         });
 
-        this.pubClient.publish(this.responseChannel, response);
+        this.publishResponse(request, response);
         break;
 
       case RequestType.REMOTE_JOIN:
@@ -253,7 +268,7 @@ export class RedisAdapter extends Adapter {
           requestId: request.requestId,
         });
 
-        this.pubClient.publish(this.responseChannel, response);
+        this.publishResponse(request, response);
         break;
 
       case RequestType.REMOTE_LEAVE:
@@ -276,7 +291,7 @@ export class RedisAdapter extends Adapter {
           requestId: request.requestId,
         });
 
-        this.pubClient.publish(this.responseChannel, response);
+        this.publishResponse(request, response);
         break;
 
       case RequestType.REMOTE_DISCONNECT:
@@ -299,7 +314,7 @@ export class RedisAdapter extends Adapter {
           requestId: request.requestId,
         });
 
-        this.pubClient.publish(this.responseChannel, response);
+        this.publishResponse(request, response);
         break;
 
       case RequestType.REMOTE_FETCH:
@@ -327,7 +342,7 @@ export class RedisAdapter extends Adapter {
           }),
         });
 
-        this.pubClient.publish(this.responseChannel, response);
+        this.publishResponse(request, response);
         break;
 
       case RequestType.SERVER_SIDE_EMIT:
@@ -364,6 +379,20 @@ export class RedisAdapter extends Adapter {
       default:
         debug("ignoring unknown request type: %s", request.type);
     }
+  }
+
+  /**
+   * Send the response to the requesting node
+   * @param request
+   * @param response
+   * @private
+   */
+  private publishResponse(request, response) {
+    const responseChannel = this.publishOnSpecificResponseChannel
+      ? `${this.responseChannel}${request.uid}#`
+      : this.responseChannel;
+    debug("publishing response to channel %s", responseChannel);
+    this.pubClient.publish(responseChannel, response);
   }
 
   /**
@@ -510,6 +539,7 @@ export class RedisAdapter extends Adapter {
 
     const requestId = uid2(6);
     const request = JSON.stringify({
+      uid: this.uid,
       requestId,
       type: RequestType.SOCKETS,
       rooms: [...rooms],
@@ -554,6 +584,7 @@ export class RedisAdapter extends Adapter {
 
     const requestId = uid2(6);
     const request = JSON.stringify({
+      uid: this.uid,
       requestId,
       type: RequestType.ALL_ROOMS,
     });
@@ -598,6 +629,7 @@ export class RedisAdapter extends Adapter {
     }
 
     const request = JSON.stringify({
+      uid: this.uid,
       requestId,
       type: RequestType.REMOTE_JOIN,
       sid: id,
@@ -641,6 +673,7 @@ export class RedisAdapter extends Adapter {
     }
 
     const request = JSON.stringify({
+      uid: this.uid,
       requestId,
       type: RequestType.REMOTE_LEAVE,
       sid: id,
@@ -684,6 +717,7 @@ export class RedisAdapter extends Adapter {
     }
 
     const request = JSON.stringify({
+      uid: this.uid,
       requestId,
       type: RequestType.REMOTE_DISCONNECT,
       sid: id,
@@ -729,6 +763,7 @@ export class RedisAdapter extends Adapter {
     const requestId = uid2(6);
 
     const request = JSON.stringify({
+      uid: this.uid,
       requestId,
       type: RequestType.REMOTE_FETCH,
       opts: {
@@ -766,6 +801,7 @@ export class RedisAdapter extends Adapter {
     }
 
     const request = JSON.stringify({
+      uid: this.uid,
       type: RequestType.REMOTE_JOIN,
       opts: {
         rooms: [...opts.rooms],
@@ -783,6 +819,7 @@ export class RedisAdapter extends Adapter {
     }
 
     const request = JSON.stringify({
+      uid: this.uid,
       type: RequestType.REMOTE_LEAVE,
       opts: {
         rooms: [...opts.rooms],
@@ -800,6 +837,7 @@ export class RedisAdapter extends Adapter {
     }
 
     const request = JSON.stringify({
+      uid: this.uid,
       type: RequestType.REMOTE_DISCONNECT,
       opts: {
         rooms: [...opts.rooms],

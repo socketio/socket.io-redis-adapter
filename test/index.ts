@@ -403,7 +403,12 @@ function _create() {
   return async (nsp, fn?) => {
     const httpServer = createServer();
     const sio = new Server(httpServer);
-    sio.adapter(createAdapter(await createClient(), await createClient()));
+    sio.adapter(
+      createAdapter(await createClient(), await createClient(), {
+        publishOnSpecificResponseChannel:
+          process.env.SPECIFIC_CHANNEL !== undefined,
+      })
+    );
     httpServer.listen((err) => {
       if (err) throw err; // abort tests
       if ("function" == typeof nsp) {
