@@ -123,19 +123,23 @@ describe(`socket.io-redis with ${
   if (process.env.REDIS_CLIENT === undefined) {
     // redis@4
     it("ignores messages from unknown channels", (done) => {
-      namespace1.adapter.subClient.PSUBSCRIBE("f?o", () => {
-        setTimeout(done, 50);
-      });
-
-      namespace3.adapter.pubClient.publish("foo", "bar");
+      namespace1.adapter.subClient
+        .PSUBSCRIBE("f?o", () => {
+          setTimeout(done, 50);
+        })
+        .then(() => {
+          namespace3.adapter.pubClient.publish("foo", "bar");
+        });
     });
 
     it("ignores messages from unknown channels (2)", (done) => {
-      namespace1.adapter.subClient.PSUBSCRIBE("woot", () => {
-        setTimeout(done, 50);
-      });
-
-      namespace3.adapter.pubClient.publish("woot", "toow");
+      namespace1.adapter.subClient
+        .PSUBSCRIBE("woot", () => {
+          setTimeout(done, 50);
+        })
+        .then(() => {
+          namespace3.adapter.pubClient.publish("woot", "toow");
+        });
     });
   } else {
     // redis@3 and ioredis
