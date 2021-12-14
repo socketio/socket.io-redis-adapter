@@ -40,13 +40,23 @@ $ npm install @socket.io/redis-adapter redis
 ### CommonJS
 
 ```js
-const io = require('socket.io')(3000);
+const { Server } = require('socket.io');
 const { createClient } = require('redis');
-const redisAdapter = require('@socket.io/redis-adapter');
+const { createAdapter } = require('@socket.io/redis-adapter');
 
+const io = new Server();
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
-io.adapter(redisAdapter(pubClient, subClient));
+
+io.adapter(createAdapter(pubClient, subClient));
+
+// redis@3
+io.listen(3000);
+
+// redis@4
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.listen(3000);
+});
 ```
 
 ### ES6 modules
@@ -54,12 +64,21 @@ io.adapter(redisAdapter(pubClient, subClient));
 ```js
 import { Server } from 'socket.io';
 import { createClient } from 'redis';
-import redisAdapter from '@socket.io/redis-adapter';
+import { createAdapter } from '@socket.io/redis-adapter';
 
-const io = new Server(3000);
+const io = new Server();
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
+
 io.adapter(redisAdapter(pubClient, subClient));
+
+// redis@3
+io.listen(3000);
+
+// redis@4
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.listen(3000);
+});
 ```
 
 ### TypeScript
@@ -70,11 +89,19 @@ import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { RedisClient } from 'redis';
 
-const io = new Server(8080);
-const pubClient = new RedisClient({ host: 'localhost', port: 6379 });
+const io = new Server();
+const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
 
-io.adapter(createAdapter(pubClient, subClient));
+io.adapter(redisAdapter(pubClient, subClient));
+
+// redis@3
+io.listen(3000);
+
+// redis@4
+Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.listen(3000);
+});
 ```
 
 By running Socket.IO with the `@socket.io/redis-adapter` adapter you can run
