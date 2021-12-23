@@ -70,7 +70,7 @@ const io = new Server();
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
 
-io.adapter(redisAdapter(pubClient, subClient));
+io.adapter(createAdapter(pubClient, subClient));
 
 // redis@3
 io.listen(3000);
@@ -93,7 +93,7 @@ const io = new Server();
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
 
-io.adapter(redisAdapter(pubClient, subClient));
+io.adapter(createAdapter(pubClient, subClient));
 
 // redis@3
 io.listen(3000);
