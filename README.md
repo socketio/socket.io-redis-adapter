@@ -48,15 +48,26 @@ const io = new Server();
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
 
-io.adapter(createAdapter(pubClient, subClient));
-
-// redis@3
-io.listen(3000);
-
-// redis@4
 Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.adapter(createAdapter(pubClient, subClient));
   io.listen(3000);
 });
+```
+
+With `redis@3`, calling `connect()` on the Redis clients is not needed:
+
+```js
+const { Server } = require('socket.io');
+const { createClient } = require('redis');
+const { createAdapter } = require('@socket.io/redis-adapter');
+
+const io = new Server();
+const pubClient = createClient({ host: 'localhost', port: 6379 });
+const subClient = pubClient.duplicate();
+
+io.adapter(createAdapter(pubClient, subClient));
+
+io.listen(3000);
 ```
 
 ### ES6 modules
@@ -70,13 +81,8 @@ const io = new Server();
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
 
-io.adapter(createAdapter(pubClient, subClient));
-
-// redis@3
-io.listen(3000);
-
-// redis@4
 Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.adapter(createAdapter(pubClient, subClient));
   io.listen(3000);
 });
 ```
@@ -84,22 +90,16 @@ Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
 ### TypeScript
 
 ```ts
-// npm i -D redis @types/redis
 import { Server } from 'socket.io';
+import { createClient } from 'redis';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { RedisClient } from 'redis';
 
 const io = new Server();
 const pubClient = createClient({ host: 'localhost', port: 6379 });
 const subClient = pubClient.duplicate();
 
-io.adapter(createAdapter(pubClient, subClient));
-
-// redis@3
-io.listen(3000);
-
-// redis@4
 Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
+  io.adapter(createAdapter(pubClient, subClient));
   io.listen(3000);
 });
 ```
