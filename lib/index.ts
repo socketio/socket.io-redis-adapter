@@ -116,7 +116,7 @@ export class RedisAdapter extends Adapter {
 
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
-      this.subClient.pSubscribe(
+      this.subClient.psubscribe(
         this.channel + "*",
         (msg, channel) => {
           this.onmessage(null, channel, msg);
@@ -410,6 +410,11 @@ export class RedisAdapter extends Adapter {
       response = JSON.parse(msg);
     } catch (err) {
       debug("ignoring malformed response");
+      return;
+    }
+
+    if (!response) {
+      debug("ignoring null response");
       return;
     }
 
