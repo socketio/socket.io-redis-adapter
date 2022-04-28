@@ -920,7 +920,7 @@ export class RedisAdapter extends Adapter {
    */
 
   private getNumSub(): Promise<number> {
-    if (this.pubClient.constructor.name === "Cluster") {
+    if (this.pubClient.constructor.name === "Cluster" || this.pubClient.isCluster) {
       // Cluster
       const nodes = this.pubClient.nodes();
       return Promise.all(
