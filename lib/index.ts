@@ -18,6 +18,9 @@ enum RequestType {
   REMOTE_DISCONNECT = 4,
   REMOTE_FETCH = 5,
   SERVER_SIDE_EMIT = 6,
+  BROADCAST,
+  BROADCAST_CLIENT_COUNT,
+  BROADCAST_ACK,
 }
 
 interface Request {
@@ -27,6 +30,11 @@ interface Request {
   numSub?: number;
   msgCount?: number;
   [other: string]: any;
+}
+
+interface AckRequest {
+  clientCountCallback: (clientCount: number) => void;
+  ack: (...args: any[]) => void;
 }
 
 const isNumeric = (str) => !isNaN(str) && !isNaN(parseFloat(str));
@@ -84,6 +92,7 @@ export class RedisAdapter extends Adapter {
   private readonly requestChannel: string;
   private readonly responseChannel: string;
   private requests: Map<string, Request> = new Map();
+  private ackRequests: Map<string, AckRequest> = new Map();
 
   /**
    * Adapter constructor.
@@ -127,7 +136,8 @@ export class RedisAdapter extends Adapter {
         [this.requestChannel, this.responseChannel, specificResponseChannel],
         (msg, channel) => {
           this.onrequest(channel, msg);
-        }
+        },
+        true
       );
     } else {
       this.subClient.psubscribe(this.channel + "*");
@@ -212,7 +222,12 @@ export class RedisAdapter extends Adapter {
     let request;
 
     try {
-      request = JSON.parse(msg);
+      // if the buffer starts with a "{" character
+      if (msg[0] === 0x7b) {
+        request = JSON.parse(msg.toString());
+      } else {
+        request = msgpack.decode(msg);
+      }
     } catch (err) {
       debug("ignoring malformed request");
       return;
@@ -379,6 +394,47 @@ export class RedisAdapter extends Adapter {
         this.nsp._onServerSideEmit(request.data);
         break;
 
+      case RequestType.BROADCAST: {
+        if (this.ackRequests.has(request.requestId)) {
+          // ignore self
+          return;
+        }
+
+        const opts = {
+          rooms: new Set<Room>(request.opts.rooms),
+          except: new Set<Room>(request.opts.except),
+        };
+
+        super.broadcastWithAck(
+          request.packet,
+          opts,
+          (clientCount) => {
+            debug("waiting for %d client acknowledgements", clientCount);
+            this.publishResponse(
+              request,
+              JSON.stringify({
+                type: RequestType.BROADCAST_CLIENT_COUNT,
+                requestId: request.requestId,
+                clientCount,
+              })
+            );
+          },
+          (arg) => {
+            debug("received acknowledgement with value %j", arg);
+
+            this.publishResponse(
+              request,
+              msgpack.encode({
+                type: RequestType.BROADCAST_ACK,
+                requestId: request.requestId,
+                packet: arg,
+              })
+            );
+          }
+        );
+        break;
+      }
+
       default:
         debug("ignoring unknown request type: %s", request.type);
     }
@@ -407,7 +463,12 @@ export class RedisAdapter extends Adapter {
     let response;
 
     try {
-      response = JSON.parse(msg);
+      // if the buffer starts with a "{" character
+      if (msg[0] === 0x7b) {
+        response = JSON.parse(msg.toString());
+      } else {
+        response = msgpack.decode(msg);
+      }
     } catch (err) {
       debug("ignoring malformed response");
       return;
@@ -415,7 +476,27 @@ export class RedisAdapter extends Adapter {
 
     const requestId = response.requestId;
 
-    if (!requestId || !this.requests.has(requestId)) {
+    if (this.ackRequests.has(requestId)) {
+      const ackRequest = this.ackRequests.get(requestId);
+
+      switch (response.type) {
+        case RequestType.BROADCAST_CLIENT_COUNT: {
+          ackRequest?.clientCountCallback(response.clientCount);
+          break;
+        }
+
+        case RequestType.BROADCAST_ACK: {
+          ackRequest?.ack(response.packet);
+          break;
+        }
+      }
+      return;
+    }
+
+    if (
+      !requestId ||
+      !(this.requests.has(requestId) || this.ackRequests.has(requestId))
+    ) {
       debug("ignoring unknown request");
       return;
     }
@@ -524,6 +605,50 @@ export class RedisAdapter extends Adapter {
       this.pubClient.publish(channel, msg);
     }
     super.broadcast(packet, opts);
+  }
+
+  public broadcastWithAck(
+    packet: any,
+    opts: BroadcastOptions,
+    clientCountCallback: (clientCount: number) => void,
+    ack: (...args: any[]) => void
+  ) {
+    packet.nsp = this.nsp.name;
+
+    const onlyLocal = opts?.flags?.local;
+
+    if (!onlyLocal) {
+      const requestId = uid2(6);
+
+      const rawOpts = {
+        rooms: [...opts.rooms],
+        except: [...new Set(opts.except)],
+        flags: opts.flags,
+      };
+
+      const request = msgpack.encode({
+        uid: this.uid,
+        requestId,
+        type: RequestType.BROADCAST,
+        packet,
+        opts: rawOpts,
+      });
+
+      this.pubClient.publish(this.requestChannel, request);
+
+      this.ackRequests.set(requestId, {
+        clientCountCallback,
+        ack,
+      });
+
+      // we have no way to know at this level whether the server has received an acknowledgement from each client, so we
+      // will simply clean up the ackRequests map after the given delay
+      setTimeout(() => {
+        this.ackRequests.delete(requestId);
+      }, opts.flags!.timeout);
+    }
+
+    super.broadcastWithAck(packet, opts, clientCountCallback, ack);
   }
 
   /**
@@ -954,5 +1079,9 @@ export class RedisAdapter extends Adapter {
         );
       });
     }
+  }
+
+  serverCount(): Promise<number> {
+    return this.getNumSub();
   }
 }

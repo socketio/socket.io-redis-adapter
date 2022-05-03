@@ -120,6 +120,90 @@ describe(`socket.io-redis with ${
     expect(namespace1.adapter.requests.size).to.eql(0);
   });
 
+  it("broadcasts with multiple acknowledgements", (done) => {
+    client1.on("test", (cb) => {
+      cb(1);
+    });
+
+    client2.on("test", (cb) => {
+      cb(2);
+    });
+
+    client3.on("test", (cb) => {
+      cb(3);
+    });
+
+    namespace1.timeout(500).emit("test", (err: Error, responses: any[]) => {
+      expect(err).to.be(null);
+      expect(responses).to.contain(1);
+      expect(responses).to.contain(2);
+      expect(responses).to.contain(3);
+
+      setTimeout(() => {
+        expect(namespace1.adapter.ackRequests.size).to.eql(0);
+
+        done();
+      }, 500);
+    });
+  });
+
+  it("broadcasts with multiple acknowledgements (binary content)", (done) => {
+    client1.on("test", (cb) => {
+      cb(Buffer.from([1]));
+    });
+
+    client2.on("test", (cb) => {
+      cb(Buffer.from([2]));
+    });
+
+    client3.on("test", (cb) => {
+      cb(Buffer.from([3]));
+    });
+
+    namespace1.timeout(500).emit("test", (err: Error, responses: any[]) => {
+      expect(err).to.be(null);
+      responses.forEach((response) => {
+        expect(Buffer.isBuffer(response)).to.be(true);
+      });
+
+      done();
+    });
+  });
+
+  it("broadcasts with multiple acknowledgements (no client)", (done) => {
+    namespace1
+      .to("abc")
+      .timeout(500)
+      .emit("test", (err: Error, responses: any[]) => {
+        expect(err).to.be(null);
+        expect(responses).to.eql([]);
+
+        done();
+      });
+  });
+
+  it("broadcasts with multiple acknowledgements (timeout)", (done) => {
+    client1.on("test", (cb) => {
+      cb(1);
+    });
+
+    client2.on("test", (cb) => {
+      cb(2);
+    });
+
+    client3.on("test", (cb) => {
+      // do nothing
+    });
+
+    namespace1.timeout(500).emit("test", (err: Error, responses: any[]) => {
+      expect(err).to.be.an(Error);
+      expect(responses).to.contain(1);
+      expect(responses).to.contain(2);
+
+      done();
+    });
+  });
+
   if (process.env.REDIS_CLIENT === undefined) {
     // redis@4
     it("ignores messages from unknown channels", (done) => {
@@ -283,7 +367,7 @@ describe(`socket.io-redis with ${
 
     describe("fetchSockets", () => {
       it("returns all socket instances", async () => {
-        socket2.data = "test";
+        socket2.data = "test" as any;
         // @ts-ignore
         socket2.handshake.sessionStore = "not included";
 
