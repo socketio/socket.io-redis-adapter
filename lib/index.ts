@@ -652,6 +652,8 @@ export class RedisAdapter extends Adapter {
   }
 
   /**
+   * @deprecated Please use `namespace.fetchSockets()` instead.
+   *
    * Gets a list of sockets by sid.
    *
    * @param {Set<Room>} rooms   the explicit set of rooms to check.
@@ -741,6 +743,8 @@ export class RedisAdapter extends Adapter {
   }
 
   /**
+   * @deprecated Please use `namespace.socketsJoin()` instead.
+   *
    * Makes the socket with the given id join the room
    *
    * @param {String} id - socket id
@@ -785,6 +789,8 @@ export class RedisAdapter extends Adapter {
   }
 
   /**
+   * @deprecated Please use `namespace.socketsLeave()` instead.
+   *
    * Makes the socket with the given id leave the room
    *
    * @param {String} id - socket id
@@ -829,7 +835,10 @@ export class RedisAdapter extends Adapter {
   }
 
   /**
+   * @deprecated Please use `namespace.disconnectSockets()` instead.
+   *
    * Makes the socket with the given id to be forcefully disconnected
+   *
    * @param {String} id - socket id
    * @param {Boolean} close - if `true`, closes the underlying connection
    *
