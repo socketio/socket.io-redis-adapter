@@ -1,3 +1,27 @@
+# [7.2.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.1.0...7.2.0) (2022-05-03)
+
+
+### Bug Fixes
+
+* add support for ioredis v5 ([#453](https://github.com/socketio/socket.io-redis-adapter/issues/453)) ([d2faa8a](https://github.com/socketio/socket.io-redis-adapter/commit/d2faa8a55a9ef206976a1ef35041d068997324f9))
+
+
+### Features
+
+* broadcast and expect multiple acks ([e4c40cc](https://github.com/socketio/socket.io-redis-adapter/commit/e4c40cc8a9ad8803f03bcbbfd6b713f3c082ee28))
+
+This feature was added in `socket.io@4.5.0`:
+
+```js
+io.timeout(1000).emit("some-event", (err, responses) => {
+  // ...
+});
+```
+
+Thanks to this change, it will now work with multiple Socket.IO servers.
+
+
+
 # [7.1.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.0.1...7.1.0) (2021-11-29)
 
 
