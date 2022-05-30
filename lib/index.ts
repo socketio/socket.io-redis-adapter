@@ -125,14 +125,20 @@ export class RedisAdapter extends Adapter {
 
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
-      this.subClient.pSubscribe(
+      let client = this.subClient;
+      try {
+        this.subClient.v4.hSet;
+        client = client.v4;
+      } catch (e) {}
+
+      client.pSubscribe(
         this.channel + "*",
         (msg, channel) => {
           this.onmessage(null, channel, msg);
         },
         true
       );
-      this.subClient.subscribe(
+      client.subscribe(
         [this.requestChannel, this.responseChannel, specificResponseChannel],
         (msg, channel) => {
           this.onrequest(channel, msg);
