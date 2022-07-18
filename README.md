@@ -12,17 +12,14 @@
 - [Compatibility table](#compatibility-table)
 - [How does it work under the hood?](#how-does-it-work-under-the-hood)
 - [API](#api)
-  - [adapter(uri[, opts])](#adapteruri-opts)
-  - [adapter(opts)](#adapteropts)
+  - [adapter(pubClient, subClient[, opts])](#adapterpubclient-subclient-opts)
   - [RedisAdapter](#redisadapter)
-    - [RedisAdapter#sockets(rooms: Set<String>)](#redisadaptersocketsrooms-setstring)
+    - [RedisAdapter#sockets(rooms: Set&lt;String&gt;)](#redisadaptersocketsrooms-setstring)
     - [RedisAdapter#allRooms()](#redisadapterallrooms)
     - [RedisAdapter#remoteJoin(id:String, room:String)](#redisadapterremotejoinidstring-roomstring)
     - [RedisAdapter#remoteLeave(id:String, room:String)](#redisadapterremoteleaveidstring-roomstring)
     - [RedisAdapter#remoteDisconnect(id:String, close:Boolean)](#redisadapterremotedisconnectidstring-closeboolean)
-- [Client error handling](#client-error-handling)
-- [Custom client (eg: with authentication)](#custom-client-eg-with-authentication)
-- [With ioredis client](#with-ioredishttpsgithubcomluinioredis-client)
+- [With ioredis client](#with-ioredis-client)
   - [Cluster example](#cluster-example)
   - [Sentinel Example](#sentinel-example)
 - [Protocol](#protocol)
@@ -209,7 +206,7 @@ that a regular `Adapter` does not
 - `subClient`
 - `requestsTimeout`
 
-### RedisAdapter#sockets(rooms: Set<String>)
+### RedisAdapter#sockets(rooms: Set&lt;String&gt;)
 
 Returns the list of socket IDs connected to `rooms` across all nodes. See [Namespace#allSockets()](https://socket.io/docs/v3/server-api/#namespace-allSockets)
 
