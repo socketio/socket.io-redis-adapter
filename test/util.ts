@@ -20,3 +20,13 @@ Assertion.prototype.contain = function (...args) {
   }
   return contain.apply(this, args);
 };
+
+export function times(count: number, fn: () => void) {
+  let i = 0;
+  return () => {
+    i++;
+    if (i === count) {
+      fn();
+    }
+  };
+}

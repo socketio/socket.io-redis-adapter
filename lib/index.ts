@@ -37,6 +37,11 @@ interface AckRequest {
   ack: (...args: any[]) => void;
 }
 
+interface Parser {
+  decode: (msg: any) => any;
+  encode: (msg: any) => any;
+}
+
 const isNumeric = (str) => !isNaN(str) && !isNaN(parseFloat(str));
 
 export interface RedisAdapterOptions {
@@ -62,6 +67,11 @@ export interface RedisAdapterOptions {
    * @default false
    */
   publishOnSpecificResponseChannel: boolean;
+  /**
+   * The parser to use for encoding and decoding messages sent to Redis.
+   * This option defaults to using `notepack.io`, a MessagePack implementation.
+   */
+  parser: Parser;
 }
 
 /**
@@ -87,6 +97,7 @@ export class RedisAdapter extends Adapter {
   public readonly uid;
   public readonly requestsTimeout: number;
   public readonly publishOnSpecificResponseChannel: boolean;
+  public readonly parser: Parser;
 
   private readonly channel: string;
   private readonly requestChannel: string;
@@ -115,6 +126,7 @@ export class RedisAdapter extends Adapter {
     this.uid = uid2(6);
     this.requestsTimeout = opts.requestsTimeout || 5000;
     this.publishOnSpecificResponseChannel = !!opts.publishOnSpecificResponseChannel;
+    this.parser = opts.parser || msgpack;
 
     const prefix = opts.key || "socket.io";
 
@@ -181,7 +193,7 @@ export class RedisAdapter extends Adapter {
       return debug("ignore unknown room %s", room);
     }
 
-    const args = msgpack.decode(msg);
+    const args = this.parser.decode(msg);
 
     const [uid, packet, opts] = args;
     if (this.uid === uid) return debug("ignore same uid");
@@ -226,7 +238,7 @@ export class RedisAdapter extends Adapter {
       if (msg[0] === 0x7b) {
         request = JSON.parse(msg.toString());
       } else {
-        request = msgpack.decode(msg);
+        request = this.parser.decode(msg);
       }
     } catch (err) {
       debug("ignoring malformed request");
@@ -424,7 +436,7 @@ export class RedisAdapter extends Adapter {
 
             this.publishResponse(
               request,
-              msgpack.encode({
+              this.parser.encode({
                 type: RequestType.BROADCAST_ACK,
                 requestId: request.requestId,
                 packet: arg,
@@ -467,7 +479,7 @@ export class RedisAdapter extends Adapter {
       if (msg[0] === 0x7b) {
         response = JSON.parse(msg.toString());
       } else {
-        response = msgpack.decode(msg);
+        response = this.parser.decode(msg);
       }
     } catch (err) {
       debug("ignoring malformed response");
@@ -596,7 +608,7 @@ export class RedisAdapter extends Adapter {
         except: [...new Set(opts.except)],
         flags: opts.flags,
       };
-      const msg = msgpack.encode([this.uid, packet, rawOpts]);
+      const msg = this.parser.encode([this.uid, packet, rawOpts]);
       let channel = this.channel;
       if (opts.rooms && opts.rooms.size === 1) {
         channel += opts.rooms.keys().next().value + "#";
@@ -626,7 +638,7 @@ export class RedisAdapter extends Adapter {
         flags: opts.flags,
       };
 
-      const request = msgpack.encode({
+      const request = this.parser.encode({
         uid: this.uid,
         requestId,
         type: RequestType.BROADCAST,

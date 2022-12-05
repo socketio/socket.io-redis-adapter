@@ -562,3 +562,5 @@ function cleanup(done) {
   }
   done();
 }
+
+require("./custom-parser");

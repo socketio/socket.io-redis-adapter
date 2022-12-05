@@ -194,6 +194,7 @@ The following options are allowed:
 
 - `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
 - `requestsTimeout`: optional, after this timeout the adapter will stop waiting from responses to request (`5000ms`)
+- `parser`: optional, parser to use for encoding and decoding messages passed through Redis ([`notepack.io`](https://www.npmjs.com/package/notepack.io))
 
 ### RedisAdapter
 
@@ -205,6 +206,7 @@ that a regular `Adapter` does not
 - `pubClient`
 - `subClient`
 - `requestsTimeout`
+- `parser`
 
 ### RedisAdapter#sockets(rooms: Set&lt;String&gt;)
 
