@@ -1,4 +1,76 @@
-# [7.2.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.1.0...7.2.0) (2022-05-03)
+# History
+
+- [**8.0.0**](#800-2022-12-07) (Dec 2022)
+- [7.2.0](#720-2022-05-03) (May 2022)
+- [7.1.0](#710-2021-11-29) (Nov 2021)
+- [7.0.1](#701-2021-11-15) (Nov 2021)
+- [**7.0.0**](#700-2021-05-11) (May 2021)
+- [6.1.0](#610-2021-03-12) (Mar 2021)
+- [6.0.1](#601-2020-11-14) (Nov 2020)
+- [**6.0.0**](#600-2020-11-12) (Nov 2020)
+- [5.4.0](#540-2020-09-02) (Sep 2020)
+- [5.3.0](#530-2020-06-04) (Jun 2020)
+- [5.2.0](#520-2017-08-24) (Aug 2017)
+- [5.1.0](#510-2017-06-04) (Jun 2017)
+
+
+
+# Release notes
+
+## [8.0.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.2.0...8.0.0) (2022-12-07)
+
+
+### Dependencies
+
+* bump notepack.io to version ~3.0.1 ([#464](https://github.com/socketio/socket.io-redis-adapter/issues/464)) ([c96b2e7](https://github.com/socketio/socket.io-redis-adapter/commit/c96b2e72b1183dce45c9d2dcb94fcdf57b1a5141))
+
+
+### Features
+
+* add option to allow usage of custom parser ([#471](https://github.com/socketio/socket.io-redis-adapter/issues/471)) ([73f6320](https://github.com/socketio/socket.io-redis-adapter/commit/73f6320006f39945c961678116ceee80f30efcf6))
+
+Example with [msgpackr](https://github.com/kriszyp/msgpackr):
+
+```js
+import { unpack, pack } from "msgpackr";
+
+io.adapter(createAdapter(pubClient, subClient, {
+  parser: {
+    encode(val) {
+      return pack(val);
+    },
+    decode(val) {
+      return unpack(val);
+    }
+  }
+}));
+```
+
+* remove deprecated methods ([fb760d9](https://github.com/socketio/socket.io-redis-adapter/commit/fb760d9d778ed8129543bf8321d87e4fd9cca711))
+
+
+### BREAKING CHANGES
+
+* the remoteJoin(), remoteLeave(), remoteDisconnect()
+  and sockets() methods are removed in favor of the official alternatives
+
+Related: https://github.com/socketio/socket.io/commit/b25495c069031674da08e19aed68922c7c7a0e28
+
+* the format of Date objects is modified in a non
+  backward-compatible way, as notepack.io now implements the MessagePack
+  Timestamp extension type.
+
+Reference: https://github.com/msgpack/msgpack/blob/master/spec.md#timestamp-extension-type
+
+Previous versions of the adapter will not be able to parse the Date
+objects sent by newer versions.
+
+- Reference: https://github.com/darrachequesne/notepack/releases/tag/3.0.0
+- Diff: https://github.com/darrachequesne/notepack/compare/2.3.0...3.0.1
+
+
+
+## [7.2.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.1.0...7.2.0) (2022-05-03)
 
 
 ### Bug Fixes
@@ -22,7 +94,7 @@ Thanks to this change, it will now work with multiple Socket.IO servers.
 
 
 
-# [7.1.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.0.1...7.1.0) (2021-11-29)
+## [7.1.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.0.1...7.1.0) (2021-11-29)
 
 
 ### Features
@@ -43,7 +115,7 @@ Thanks to this change, it will now work with multiple Socket.IO servers.
 
 
 
-# [7.0.0](https://github.com/socketio/socket.io-redis-adapter/compare/6.1.0...7.0.0) (2021-05-11)
+## [7.0.0](https://github.com/socketio/socket.io-redis-adapter/compare/6.1.0...7.0.0) (2021-05-11)
 
 
 ### Features
@@ -73,7 +145,7 @@ io.adapter(redisAdapter(pubClient, subClient));
 ```
 
 
-# [6.1.0](https://github.com/socketio/socket.io-redis/compare/6.0.1...6.1.0) (2021-03-12)
+## [6.1.0](https://github.com/socketio/socket.io-redis/compare/6.0.1...6.1.0) (2021-03-12)
 
 
 ### Features
@@ -96,7 +168,7 @@ io.adapter(redisAdapter(pubClient, subClient));
 
 
 
-# [6.0.0](https://github.com/socketio/socket.io-redis/compare/5.4.0...6.0.0) (2020-11-12)
+## [6.0.0](https://github.com/socketio/socket.io-redis/compare/5.4.0...6.0.0) (2020-11-12)
 
 
 ### Features
@@ -136,7 +208,7 @@ See https://github.com/nodejs/Release
 
 
 
-# [5.4.0](https://github.com/socketio/socket.io-redis/compare/5.3.0...5.4.0) (2020-09-02)
+## [5.4.0](https://github.com/socketio/socket.io-redis/compare/5.3.0...5.4.0) (2020-09-02)
 
 
 ### Features
@@ -145,7 +217,7 @@ See https://github.com/nodejs/Release
 
 
 
-# [5.3.0](https://github.com/socketio/socket.io-redis/compare/5.2.0...5.3.0) (2020-06-04)
+## [5.3.0](https://github.com/socketio/socket.io-redis/compare/5.2.0...5.3.0) (2020-06-04)
 
 
 ### Features
@@ -154,7 +226,7 @@ See https://github.com/nodejs/Release
 
 
 
-# [5.2.0](https://github.com/socketio/socket.io-redis/compare/5.1.0...5.2.0) (2017-08-24)
+## [5.2.0](https://github.com/socketio/socket.io-redis/compare/5.1.0...5.2.0) (2017-08-24)
 
 
 ### Features
@@ -163,7 +235,7 @@ See https://github.com/nodejs/Release
 
 
 
-# [5.1.0](https://github.com/socketio/socket.io-redis/compare/5.0.1...5.1.0) (2017-06-04)
+## [5.1.0](https://github.com/socketio/socket.io-redis/compare/5.0.1...5.1.0) (2017-06-04)
 
 ### Bug Fixes
 
