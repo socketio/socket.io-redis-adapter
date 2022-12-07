@@ -108,18 +108,6 @@ describe(`socket.io-redis with ${
     socket1.disconnect();
   });
 
-  it("returns sockets in the same room", async () => {
-    socket1.join("woot");
-    socket2.join("woot");
-
-    const sockets = await namespace1.adapter.sockets(new Set(["woot"]));
-
-    expect(sockets.size).to.eql(2);
-    expect(sockets.has(socket1.id)).to.be(true);
-    expect(sockets.has(socket2.id)).to.be(true);
-    expect(namespace1.adapter.requests.size).to.eql(0);
-  });
-
   it("broadcasts with multiple acknowledgements", (done) => {
     client1.on("test", (cb) => {
       cb(1);
@@ -264,31 +252,6 @@ describe(`socket.io-redis with ${
       expect(rooms.has(socket2.id)).to.be(true);
       expect(rooms.has(socket3.id)).to.be(true);
       expect(rooms.has("woot1")).to.be(true);
-    });
-
-    it("makes a given socket join a room", async () => {
-      await namespace3.adapter.remoteJoin(socket1.id, "woot3");
-
-      expect(socket1.rooms.size).to.eql(2);
-      expect(socket1.rooms.has("woot3")).to.be(true);
-    });
-
-    it("makes a given socket leave a room", async () => {
-      socket1.join("woot3");
-
-      await namespace3.adapter.remoteLeave(socket1.id, "woot3");
-
-      expect(socket1.rooms.size).to.eql(1);
-      expect(socket1.rooms.has("woot3")).to.be(false);
-    });
-
-    it("makes a given socket disconnect", (done) => {
-      client1.on("disconnect", (err) => {
-        expect(err).to.be("io server disconnect");
-        done();
-      });
-
-      namespace2.adapter.remoteDisconnect(socket1.id, false);
     });
 
     describe("socketsJoin", () => {
