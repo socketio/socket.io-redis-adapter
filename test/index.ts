@@ -552,10 +552,16 @@ function cleanup(done) {
   namespace2.adapter.on("error", noop);
   namespace3.adapter.on("error", noop);
   if (typeof namespace1.adapter.subClient.disconnect == "function") {
+    namespace1.adapter.pubClient.disconnect();
+    namespace2.adapter.pubClient.disconnect();
+    namespace3.adapter.pubClient.disconnect();
     namespace1.adapter.subClient.disconnect();
     namespace2.adapter.subClient.disconnect();
     namespace3.adapter.subClient.disconnect();
   } else {
+    namespace1.adapter.pubClient.quit();
+    namespace2.adapter.pubClient.quit();
+    namespace3.adapter.pubClient.quit();
     namespace1.adapter.subClient.quit();
     namespace2.adapter.subClient.quit();
     namespace3.adapter.subClient.quit();
