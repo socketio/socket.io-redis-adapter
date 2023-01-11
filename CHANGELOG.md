@@ -1,5 +1,6 @@
 # History
 
+- [8.0.1](801-2023-01-11) (Jan 2023)
 - [**8.0.0**](#800-2022-12-07) (Dec 2022)
 - [7.2.0](#720-2022-05-03) (May 2022)
 - [7.1.0](#710-2021-11-29) (Nov 2021)
@@ -16,6 +17,12 @@
 
 
 # Release notes
+
+## [8.0.1](https://github.com/socketio/socket.io-redis-adapter/compare/8.0.0...8.0.1) (2023-01-11)
+
+This release pins the `socket.io-adapter` package to version `~2.4.0` instead of `^2.4.0`.
+
+
 
 ## [8.0.0](https://github.com/socketio/socket.io-redis-adapter/compare/7.2.0...8.0.0) (2022-12-07)
 
