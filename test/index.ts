@@ -192,6 +192,70 @@ describe(`socket.io-redis with ${
     });
   });
 
+  it("unsubscribes when close is called", async () => {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const parseInfo = (rawInfo: string) => {
+          const info = {};
+
+          rawInfo.split("\r\n").forEach((line) => {
+            if (line.length > 0 && !line.startsWith("#")) {
+              const fieldVal = line.split(":");
+              info[fieldVal[0]] = fieldVal[1];
+            }
+          });
+
+          return info;
+        };
+
+        const getInfo = async (): Promise<any> => {
+          if (process.env.REDIS_CLIENT === undefined) {
+            return parseInfo(
+              await namespace3.adapter.pubClient.sendCommand(["info"])
+            );
+          } else if (process.env.REDIS_CLIENT === "ioredis") {
+            return parseInfo(await namespace3.adapter.pubClient.call("info"));
+          } else {
+            return await new Promise((resolve, reject) => {
+              namespace3.adapter.pubClient.sendCommand(
+                "info",
+                [],
+                (err, result) => {
+                  if (err) {
+                    reject(err);
+                  }
+                  resolve(parseInfo(result));
+                }
+              );
+            });
+          }
+        };
+
+        const info = await getInfo();
+
+        expect(info.pubsub_patterns).to.eql(3); // 1 pattern for each namespace
+        expect(info.pubsub_channels).to.eql(5); // 2 shared (request/response) + 3 unique for each namespace
+
+        namespace1.adapter.close();
+
+        // Give it a moment to unsubscribe
+        setTimeout(async () => {
+          try {
+            const info = await getInfo();
+
+            expect(info.pubsub_patterns).to.eql(2); // 1 less pattern
+            expect(info.pubsub_channels).to.eql(4); // 1 less sub
+            resolve();
+          } catch (error) {
+            reject(error);
+          }
+        }, 200);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
+
   if (process.env.REDIS_CLIENT === undefined) {
     // redis@4
     it("ignores messages from unknown channels", (done) => {
