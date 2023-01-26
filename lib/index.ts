@@ -137,13 +137,25 @@ export class RedisAdapter extends Adapter {
 
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
-      this.subClient.pSubscribe(
-        this.channel + "*",
+      this.subClient.subscribe(
+        [this.channel],
         (msg, channel) => {
           this.onmessage(null, channel, msg);
         },
         true
       );
+      this.on("create-room", (room) => {
+        this.subClient.subscribe(
+          this.channel + room + "#",
+          (msg, channel) => {
+            this.onmessage(null, channel, msg);
+          },
+          true
+        );
+      });
+      this.on("delete-room", (room) => {
+        this.subClient.unsubscribe(this.channel + room + "#");
+      });
       this.subClient.subscribe(
         [this.requestChannel, this.responseChannel, specificResponseChannel],
         (msg, channel) => {
@@ -152,7 +164,13 @@ export class RedisAdapter extends Adapter {
         true
       );
     } else {
-      this.subClient.psubscribe(this.channel + "*");
+      this.subClient.psubscribe(this.channel);
+      this.on("create-room", (room) => {
+        this.subClient.psubscribe(this.channel + room + "#");
+      });
+      this.on("delete-room", (room) => {
+        this.subClient.punsubscribe(this.channel + room + "#");
+      });
       this.subClient.on("pmessageBuffer", this.onmessage.bind(this));
 
       this.subClient.subscribe([
@@ -185,7 +203,7 @@ export class RedisAdapter extends Adapter {
 
     const channelMatches = channel.startsWith(this.channel);
     if (!channelMatches) {
-      return debug("ignore different channel");
+      return debug(`ignore different channel (onmessage): ${channel}`);
     }
 
     const room = channel.slice(this.channel.length, -1);
@@ -228,7 +246,7 @@ export class RedisAdapter extends Adapter {
     if (channel.startsWith(this.responseChannel)) {
       return this.onresponse(channel, msg);
     } else if (!channel.startsWith(this.requestChannel)) {
-      return debug("ignore different channel");
+      return debug(`ignore different channel (onrequest): ${channel}`);
     }
 
     let request;
