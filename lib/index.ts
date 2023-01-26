@@ -164,21 +164,25 @@ export class RedisAdapter extends Adapter {
         true
       );
     } else {
-      this.subClient.psubscribe(this.channel);
+      this.subClient.subscribe(this.channel);
       this.on("create-room", (room) => {
-        this.subClient.psubscribe(this.channel + room + "#");
+        this.subClient.subscribe(this.channel + room + "#");
       });
       this.on("delete-room", (room) => {
-        this.subClient.punsubscribe(this.channel + room + "#");
+        this.subClient.unsubscribe(this.channel + room + "#");
       });
-      this.subClient.on("pmessageBuffer", this.onmessage.bind(this));
 
       this.subClient.subscribe([
         this.requestChannel,
         this.responseChannel,
         specificResponseChannel,
       ]);
-      this.subClient.on("messageBuffer", this.onrequest.bind(this));
+      this.subClient.on("messageBuffer", async (channel, msg) => {
+        if (channel.toString().startsWith(this.channel)) {
+          return this.onmessage(null, channel, msg);
+        }
+        return await this.onrequest(channel, msg);
+      });
     }
 
     const registerFriendlyErrorHandler = (redisClient) => {
