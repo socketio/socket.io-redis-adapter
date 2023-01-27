@@ -231,20 +231,20 @@ describe(`socket.io-redis with ${
 
     return new Promise(async (resolve, reject) => {
       // Give it a moment to subscribe to all the channels
-      setTimeout(async() => {
-        try {               
+      setTimeout(async () => {
+        try {
           const info = await getInfo();
-  
+
           expect(info.pubsub_patterns).to.eql(3); // 1 pattern for each namespace
           expect(info.pubsub_channels).to.eql(5); // 2 shared (request/response) + 3 unique for each namespace
-  
+
           namespace1.adapter.close();
-  
+
           // Give it a moment to unsubscribe
           setTimeout(async () => {
             try {
               const info = await getInfo();
-  
+
               expect(info.pubsub_patterns).to.eql(2); // 1 less pattern
               expect(info.pubsub_channels).to.eql(4); // 1 less sub
               resolve();
@@ -254,8 +254,8 @@ describe(`socket.io-redis with ${
           }, 200);
         } catch (error) {
           reject(error);
-        }    
-      }, 300);      
+        }
+      }, 300);
     });
   });
 
