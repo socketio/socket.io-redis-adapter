@@ -235,27 +235,31 @@ describe(`socket.io-redis with ${
         try {
           const info = await getInfo();
 
-          expect(info.pubsub_patterns).to.eql(3); // 1 pattern for each namespace
+          // Depending on the version of redis this may be 3 (redis < v5) or 1 (redis > v4)
+          // Older versions subscribed multiple times on the same pattern. Newer versions only sub once.
+          expect(info.pubsub_patterns).to.be.greaterThan(0);
           expect(info.pubsub_channels).to.eql(5); // 2 shared (request/response) + 3 unique for each namespace
 
           namespace1.adapter.close();
+          namespace2.adapter.close();
+          namespace3.adapter.close();
 
           // Give it a moment to unsubscribe
           setTimeout(async () => {
             try {
               const info = await getInfo();
 
-              expect(info.pubsub_patterns).to.eql(2); // 1 less pattern
-              expect(info.pubsub_channels).to.eql(4); // 1 less sub
+              expect(info.pubsub_patterns).to.eql(0); // All patterns subscriptions should be unsubscribed
+              expect(info.pubsub_channels).to.eql(0); // All subscriptions should be unsubscribed
               resolve();
             } catch (error) {
               reject(error);
             }
-          }, 200);
+          }, 100);
         } catch (error) {
           reject(error);
         }
-      }, 300);
+      }, 100);
     });
   });
 
