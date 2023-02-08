@@ -192,6 +192,77 @@ describe(`socket.io-redis with ${
     });
   });
 
+  it("unsubscribes when close is called", async () => {
+    const parseInfo = (rawInfo: string) => {
+      const info = {};
+
+      rawInfo.split("\r\n").forEach((line) => {
+        if (line.length > 0 && !line.startsWith("#")) {
+          const fieldVal = line.split(":");
+          info[fieldVal[0]] = fieldVal[1];
+        }
+      });
+
+      return info;
+    };
+
+    const getInfo = async (): Promise<any> => {
+      if (process.env.REDIS_CLIENT === undefined) {
+        return parseInfo(
+          await namespace3.adapter.pubClient.sendCommand(["info"])
+        );
+      } else if (process.env.REDIS_CLIENT === "ioredis") {
+        return parseInfo(await namespace3.adapter.pubClient.call("info"));
+      } else {
+        return await new Promise((resolve, reject) => {
+          namespace3.adapter.pubClient.sendCommand(
+            "info",
+            [],
+            (err, result) => {
+              if (err) {
+                reject(err);
+              }
+              resolve(parseInfo(result));
+            }
+          );
+        });
+      }
+    };
+
+    return new Promise(async (resolve, reject) => {
+      // Give it a moment to subscribe to all the channels
+      setTimeout(async () => {
+        try {
+          const info = await getInfo();
+
+          // Depending on the version of redis this may be 3 (redis < v5) or 1 (redis > v4)
+          // Older versions subscribed multiple times on the same pattern. Newer versions only sub once.
+          expect(info.pubsub_patterns).to.be.greaterThan(0);
+          expect(info.pubsub_channels).to.eql(5); // 2 shared (request/response) + 3 unique for each namespace
+
+          namespace1.adapter.close();
+          namespace2.adapter.close();
+          namespace3.adapter.close();
+
+          // Give it a moment to unsubscribe
+          setTimeout(async () => {
+            try {
+              const info = await getInfo();
+
+              expect(info.pubsub_patterns).to.eql(0); // All patterns subscriptions should be unsubscribed
+              expect(info.pubsub_channels).to.eql(0); // All subscriptions should be unsubscribed
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          }, 100);
+        } catch (error) {
+          reject(error);
+        }
+      }, 100);
+    });
+  });
+
   if (process.env.REDIS_CLIENT === undefined) {
     // redis@4
     it("ignores messages from unknown channels", (done) => {

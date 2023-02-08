@@ -102,8 +102,10 @@ export class RedisAdapter extends Adapter {
   private readonly channel: string;
   private readonly requestChannel: string;
   private readonly responseChannel: string;
+  private readonly specificResponseChannel: string;
   private requests: Map<string, Request> = new Map();
   private ackRequests: Map<string, AckRequest> = new Map();
+  private redisListeners: Map<string, Function> = new Map();
 
   /**
    * Adapter constructor.
@@ -133,34 +135,51 @@ export class RedisAdapter extends Adapter {
     this.channel = prefix + "#" + nsp.name + "#";
     this.requestChannel = prefix + "-request#" + this.nsp.name + "#";
     this.responseChannel = prefix + "-response#" + this.nsp.name + "#";
-    const specificResponseChannel = this.responseChannel + this.uid + "#";
+    this.specificResponseChannel = this.responseChannel + this.uid + "#";
 
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
+      this.redisListeners.set("psub", (msg, channel) => {
+        this.onmessage(null, channel, msg);
+      });
+
+      this.redisListeners.set("sub", (msg, channel) => {
+        this.onrequest(channel, msg);
+      });
+
       this.subClient.pSubscribe(
         this.channel + "*",
-        (msg, channel) => {
-          this.onmessage(null, channel, msg);
-        },
+        this.redisListeners.get("psub"),
         true
       );
       this.subClient.subscribe(
-        [this.requestChannel, this.responseChannel, specificResponseChannel],
-        (msg, channel) => {
-          this.onrequest(channel, msg);
-        },
+        [
+          this.requestChannel,
+          this.responseChannel,
+          this.specificResponseChannel,
+        ],
+        this.redisListeners.get("sub"),
         true
       );
     } else {
+      this.redisListeners.set("pmessageBuffer", this.onmessage.bind(this));
+      this.redisListeners.set("messageBuffer", this.onrequest.bind(this));
+
       this.subClient.psubscribe(this.channel + "*");
-      this.subClient.on("pmessageBuffer", this.onmessage.bind(this));
+      this.subClient.on(
+        "pmessageBuffer",
+        this.redisListeners.get("pmessageBuffer")
+      );
 
       this.subClient.subscribe([
         this.requestChannel,
         this.responseChannel,
-        specificResponseChannel,
+        this.specificResponseChannel,
       ]);
-      this.subClient.on("messageBuffer", this.onrequest.bind(this));
+      this.subClient.on(
+        "messageBuffer",
+        this.redisListeners.get("messageBuffer")
+      );
     }
 
     const registerFriendlyErrorHandler = (redisClient) => {
@@ -916,5 +935,50 @@ export class RedisAdapter extends Adapter {
 
   serverCount(): Promise<number> {
     return this.getNumSub();
+  }
+
+  close(): Promise<void> | void {
+    const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
+    if (isRedisV4) {
+      this.subClient.pUnsubscribe(
+        this.channel + "*",
+        this.redisListeners.get("psub"),
+        true
+      );
+
+      // There is a bug in redis v4 when unsubscribing multiple channels at once, so we'll unsub one at a time.
+      // See https://github.com/redis/node-redis/issues/2052
+      this.subClient.unsubscribe(
+        this.requestChannel,
+        this.redisListeners.get("sub"),
+        true
+      );
+      this.subClient.unsubscribe(
+        this.responseChannel,
+        this.redisListeners.get("sub"),
+        true
+      );
+      this.subClient.unsubscribe(
+        this.specificResponseChannel,
+        this.redisListeners.get("sub"),
+        true
+      );
+    } else {
+      this.subClient.punsubscribe(this.channel + "*");
+      this.subClient.off(
+        "pmessageBuffer",
+        this.redisListeners.get("pmessageBuffer")
+      );
+
+      this.subClient.unsubscribe([
+        this.requestChannel,
+        this.responseChannel,
+        this.specificResponseChannel,
+      ]);
+      this.subClient.off(
+        "messageBuffer",
+        this.redisListeners.get("messageBuffer")
+      );
+    }
   }
 }
