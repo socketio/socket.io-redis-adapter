@@ -1,5 +1,6 @@
 # History
 
+- [8.1.0](810-2023-02-08) (Feb 2023)
 - [8.0.1](801-2023-01-11) (Jan 2023)
 - [**8.0.0**](#800-2022-12-07) (Dec 2022)
 - [7.2.0](#720-2022-05-03) (May 2022)
@@ -17,6 +18,22 @@
 
 
 # Release notes
+
+## [8.1.0](https://github.com/socketio/socket.io-redis-adapter/compare/8.0.1...8.1.0) (2023-02-08)
+
+The `socket.io-adapter` package was added to the list of `peerDependencies`, in order to fix sync issues with the version imported by the `socket.io` package (see [f07ff7b](https://github.com/socketio/socket.io-redis-adapter/commit/f07ff7bd33817ac14d8d87ba55225e7936469429)).
+
+### Features
+
+#### Automatic removal of empty child namespaces
+
+The `close()` method was implemented, in order to be used with the new `cleanupEmptyChildNamespaces` option.
+
+Reference: https://github.com/socketio/socket.io/releases/tag/4.6.0
+
+Added in [fe89f7e](https://github.com/socketio/socket.io-redis-adapter/commit/fe89f7e5fe9676d0054b77de147fb244034a441e).
+
+
 
 ## [8.0.1](https://github.com/socketio/socket.io-redis-adapter/compare/8.0.0...8.0.1) (2023-01-11)
 
