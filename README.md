@@ -14,11 +14,7 @@
 - [API](#api)
   - [adapter(pubClient, subClient[, opts])](#adapterpubclient-subclient-opts)
   - [RedisAdapter](#redisadapter)
-    - [RedisAdapter#sockets(rooms: Set&lt;String&gt;)](#redisadaptersocketsrooms-setstring)
     - [RedisAdapter#allRooms()](#redisadapterallrooms)
-    - [RedisAdapter#remoteJoin(id:String, room:String)](#redisadapterremotejoinidstring-roomstring)
-    - [RedisAdapter#remoteLeave(id:String, room:String)](#redisadapterremoteleaveidstring-roomstring)
-    - [RedisAdapter#remoteDisconnect(id:String, close:Boolean)](#redisadapterremotedisconnectidstring-closeboolean)
 - [With ioredis client](#with-ioredis-client)
   - [Cluster example](#cluster-example)
   - [Sentinel Example](#sentinel-example)
@@ -208,22 +204,6 @@ that a regular `Adapter` does not
 - `requestsTimeout`
 - `parser`
 
-### RedisAdapter#sockets(rooms: Set&lt;String&gt;)
-
-Returns the list of socket IDs connected to `rooms` across all nodes. See [Namespace#allSockets()](https://socket.io/docs/v3/server-api/#namespace-allSockets)
-
-```js
-const sockets = await io.of('/').adapter.sockets(new Set());
-console.log(sockets); // a Set containing all the connected socket ids
-
-const sockets = await io.of('/').adapter.sockets(new Set(['room1', 'room2']));
-console.log(sockets); // a Set containing the socket ids in 'room1' or in 'room2'
-
-// this method is also exposed by the Server instance
-const sockets = await io.in('room3').allSockets();
-console.log(sockets); // a Set containing the socket ids in 'room3'
-```
-
 ### RedisAdapter#allRooms()
 
 Returns the list of all rooms.
@@ -231,42 +211,6 @@ Returns the list of all rooms.
 ```js
 const rooms = await io.of('/').adapter.allRooms();
 console.log(rooms); // a Set containing all rooms (across every node)
-```
-
-### RedisAdapter#remoteJoin(id:String, room:String)
-
-Makes the socket with the given id join the room.
-
-```js
-try {
-  await io.of('/').adapter.remoteJoin('<my-id>', 'room1');
-} catch (e) {
-  // the socket was not found
-}
-```
-
-### RedisAdapter#remoteLeave(id:String, room:String)
-
-Makes the socket with the given id leave the room.
-
-```js
-try {
-  await io.of('/').adapter.remoteLeave('<my-id>', 'room1');
-} catch (e) {
-  // the socket was not found
-}
-```
-
-### RedisAdapter#remoteDisconnect(id:String, close:Boolean)
-
-Makes the socket with the given id to get disconnected. If `close` is set to true, it also closes the underlying socket.
-
-```js
-try {
-  await io.of('/').adapter.remoteDisconnect('<my-id>', true);
-} catch (e) {
-  // the socket was not found
-}
 ```
 
 ## With ioredis client
