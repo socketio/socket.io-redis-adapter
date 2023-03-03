@@ -106,6 +106,7 @@ export class RedisAdapter extends Adapter {
   private requests: Map<string, Request> = new Map();
   private ackRequests: Map<string, AckRequest> = new Map();
   private redisListeners: Map<string, Function> = new Map();
+  private readonly friendlyErrorHandler: () => void;
 
   /**
    * Adapter constructor.
@@ -182,16 +183,13 @@ export class RedisAdapter extends Adapter {
       );
     }
 
-    const registerFriendlyErrorHandler = (redisClient) => {
-      redisClient.on("error", () => {
-        if (redisClient.listenerCount("error") === 1) {
-          console.warn("missing 'error' handler on this Redis client");
-        }
-      });
+    this.friendlyErrorHandler = function () {
+      if (this.listenerCount("error") === 1) {
+        console.warn("missing 'error' handler on this Redis client");
+      }
     };
-
-    registerFriendlyErrorHandler(this.pubClient);
-    registerFriendlyErrorHandler(this.subClient);
+    this.pubClient.on("error", this.friendlyErrorHandler);
+    this.subClient.on("error", this.friendlyErrorHandler);
   }
 
   /**
@@ -980,5 +978,8 @@ export class RedisAdapter extends Adapter {
         this.redisListeners.get("messageBuffer")
       );
     }
+
+    this.pubClient.off("error", this.friendlyErrorHandler);
+    this.subClient.off("error", this.friendlyErrorHandler);
   }
 }
