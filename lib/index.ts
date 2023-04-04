@@ -72,6 +72,20 @@ export interface RedisAdapterOptions {
    * This option defaults to using `notepack.io`, a MessagePack implementation.
    */
   parser: Parser;
+  /**
+   * Whether or not to disable pattern subscriptions. Pattern subscriptions are not optimized in redis and
+   * having a large number of them can cause redis latency. The amount of latency depends on the number of
+   * publishes and the number of pattern subscriptions.
+   *
+   * If you are using rooms and you enable this option, you will lose some CPU optimization when sending a
+   * message to a single room.
+   *
+   * You wouldn't turn this option on unless you notice higher amounts of redis latency and you have a large
+   * number of namespaces.
+   *
+   * @default false
+   */
+  disablePatternSubscriptions: boolean;
 }
 
 /**
@@ -98,6 +112,7 @@ export class RedisAdapter extends Adapter {
   public readonly requestsTimeout: number;
   public readonly publishOnSpecificResponseChannel: boolean;
   public readonly parser: Parser;
+  public readonly disablePatternSubscriptions: boolean;
 
   private readonly channel: string;
   private readonly requestChannel: string;
@@ -129,6 +144,7 @@ export class RedisAdapter extends Adapter {
     this.requestsTimeout = opts.requestsTimeout || 5000;
     this.publishOnSpecificResponseChannel = !!opts.publishOnSpecificResponseChannel;
     this.parser = opts.parser || msgpack;
+    this.disablePatternSubscriptions = !!opts.disablePatternSubscriptions;
 
     const prefix = opts.key || "socket.io";
 
@@ -136,6 +152,16 @@ export class RedisAdapter extends Adapter {
     this.requestChannel = prefix + "-request#" + this.nsp.name + "#";
     this.responseChannel = prefix + "-response#" + this.nsp.name + "#";
     this.specificResponseChannel = this.responseChannel + this.uid + "#";
+
+    const subscribeChannels = [
+      this.requestChannel,
+      this.responseChannel,
+      this.specificResponseChannel,
+    ];
+
+    if (this.disablePatternSubscriptions) {
+      subscribeChannels.push(this.channel);
+    }
 
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
@@ -147,17 +173,16 @@ export class RedisAdapter extends Adapter {
         this.onrequest(channel, msg);
       });
 
-      this.subClient.pSubscribe(
-        this.channel + "*",
-        this.redisListeners.get("psub"),
-        true
-      );
+      if (!this.disablePatternSubscriptions) {
+        this.subClient.pSubscribe(
+          this.channel + "*",
+          this.redisListeners.get("psub"),
+          true
+        );
+      }
+
       this.subClient.subscribe(
-        [
-          this.requestChannel,
-          this.responseChannel,
-          this.specificResponseChannel,
-        ],
+        subscribeChannels,
         this.redisListeners.get("sub"),
         true
       );
@@ -165,17 +190,16 @@ export class RedisAdapter extends Adapter {
       this.redisListeners.set("pmessageBuffer", this.onmessage.bind(this));
       this.redisListeners.set("messageBuffer", this.onrequest.bind(this));
 
-      this.subClient.psubscribe(this.channel + "*");
-      this.subClient.on(
-        "pmessageBuffer",
-        this.redisListeners.get("pmessageBuffer")
-      );
+      if (!this.disablePatternSubscriptions) {
+        this.subClient.psubscribe(this.channel + "*");
 
-      this.subClient.subscribe([
-        this.requestChannel,
-        this.responseChannel,
-        this.specificResponseChannel,
-      ]);
+        this.subClient.on(
+          "pmessageBuffer",
+          this.redisListeners.get("pmessageBuffer")
+        );
+      }
+
+      this.subClient.subscribe(subscribeChannels);
       this.subClient.on(
         "messageBuffer",
         this.redisListeners.get("messageBuffer")
@@ -246,6 +270,11 @@ export class RedisAdapter extends Adapter {
 
     if (channel.startsWith(this.responseChannel)) {
       return this.onresponse(channel, msg);
+    } else if (
+      this.disablePatternSubscriptions &&
+      channel.startsWith(this.channel)
+    ) {
+      return this.onmessage(undefined, channel, msg);
     } else if (!channel.startsWith(this.requestChannel)) {
       return debug("ignore different channel");
     }
@@ -629,7 +658,11 @@ export class RedisAdapter extends Adapter {
       };
       const msg = this.parser.encode([this.uid, packet, rawOpts]);
       let channel = this.channel;
-      if (opts.rooms && opts.rooms.size === 1) {
+      if (
+        !this.disablePatternSubscriptions &&
+        opts.rooms &&
+        opts.rooms.size === 1
+      ) {
         channel += opts.rooms.keys().next().value + "#";
       }
       debug("publishing message to channel %s", channel);
@@ -939,12 +972,21 @@ export class RedisAdapter extends Adapter {
 
   close(): Promise<void> | void {
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
+
     if (isRedisV4) {
-      this.subClient.pUnsubscribe(
-        this.channel + "*",
-        this.redisListeners.get("psub"),
-        true
-      );
+      if (this.disablePatternSubscriptions) {
+        this.subClient.unsubscribe(
+          this.channel,
+          this.redisListeners.get("sub"),
+          true
+        );
+      } else {
+        this.subClient.pUnsubscribe(
+          this.channel + "*",
+          this.redisListeners.get("psub"),
+          true
+        );
+      }
 
       // There is a bug in redis v4 when unsubscribing multiple channels at once, so we'll unsub one at a time.
       // See https://github.com/redis/node-redis/issues/2052
@@ -964,17 +1006,23 @@ export class RedisAdapter extends Adapter {
         true
       );
     } else {
-      this.subClient.punsubscribe(this.channel + "*");
-      this.subClient.off(
-        "pmessageBuffer",
-        this.redisListeners.get("pmessageBuffer")
-      );
-
-      this.subClient.unsubscribe([
+      const unsubscribeChannels = [
         this.requestChannel,
         this.responseChannel,
         this.specificResponseChannel,
-      ]);
+      ];
+
+      if (this.disablePatternSubscriptions) {
+        unsubscribeChannels.push(this.channel);
+      } else {
+        this.subClient.punsubscribe(this.channel + "*");
+        this.subClient.off(
+          "pmessageBuffer",
+          this.redisListeners.get("pmessageBuffer")
+        );
+      }
+
+      this.subClient.unsubscribe(unsubscribeChannels);
       this.subClient.off(
         "messageBuffer",
         this.redisListeners.get("messageBuffer")

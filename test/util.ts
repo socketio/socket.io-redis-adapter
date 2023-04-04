@@ -63,6 +63,9 @@ export function setup(adapterOptions: Partial<RedisAdapterOptions> = {}) {
       adapterOptions.publishOnSpecificResponseChannel =
         process.env.SPECIFIC_CHANNEL !== undefined;
 
+      adapterOptions.disablePatternSubscriptions =
+        process.env.DISABLE_PATTERN_SUBS !== undefined;
+
       const httpServer = createServer();
       const io = new Server(httpServer, {
         adapter: createAdapter(pubClient, subClient, adapterOptions),

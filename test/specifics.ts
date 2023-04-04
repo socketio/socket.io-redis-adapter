@@ -87,8 +87,13 @@ describe("specifics", () => {
 
           // Depending on the version of redis this may be 3 (redis < v5) or 1 (redis > v4)
           // Older versions subscribed multiple times on the same pattern. Newer versions only sub once.
-          expect(info.pubsub_patterns).to.be.greaterThan(0);
-          expect(info.pubsub_channels).to.eql(5); // 2 shared (request/response) + 3 unique for each namespace
+          if (process.env.DISABLE_PATTERN_SUBS) {
+            expect(info.pubsub_patterns).to.eql(0);
+            expect(info.pubsub_channels).to.eql(6); // 2 shared (request/response) + 4 unique for each namespace
+          } else {
+            expect(info.pubsub_patterns).to.be.greaterThan(0);
+            expect(info.pubsub_channels).to.eql(5); // 2 shared (request/response) + 3 unique for each namespace
+          }
 
           servers[0].of("/").adapter.close();
           servers[1].of("/").adapter.close();

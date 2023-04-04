@@ -13,11 +13,14 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "npm run format:check && tsc && npm run test:default && npm run test:redis-v4-specific-channel && npm run test:redis-v3 && npm run test:ioredis",
+    "test": "npm run format:check && tsc && npm run test:default && npm run test:redis-v4-specific-channel && npm run test:redis-v3 && npm run test:ioredis && npm run test:redis-v4-disable-pattern-subs && npm run test:redis-v3-disable-pattern-subs && npm run test:ioredis-disable-pattern-subs",
     "test:default": "nyc mocha --bail --require ts-node/register test/*.ts",
     "test:redis-v4-specific-channel": "SPECIFIC_CHANNEL=1 npm run test:default",
     "test:redis-v3": "REDIS_CLIENT=redis-v3 npm run test:default",
     "test:ioredis": "REDIS_CLIENT=ioredis npm run test:default",
+    "test:redis-v4-disable-pattern-subs": "DISABLE_PATTERN_SUBS=1 npm run test:default",
+    "test:redis-v3-disable-pattern-subs": "REDIS_CLIENT=redis-v3 DISABLE_PATTERN_SUBS=1 npm run test:default",
+    "test:ioredis-disable-pattern-subs": "REDIS_CLIENT=ioredis DISABLE_PATTERN_SUBS=1 npm run test:default",
     "format:check": "prettier --parser typescript --check 'lib/**/*.ts' 'test/**/*.ts'",
     "format:fix": "prettier --parser typescript --write 'lib/**/*.ts' 'test/**/*.ts'",
     "prepack": "tsc"
