@@ -13,11 +13,11 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "npm run format:check && tsc && npm run test:redis-v4 && npm run test:redis-v4-specific-channel && npm run test:redis-v3 && npm run test:ioredis",
-    "test:redis-v4": "nyc mocha --bail --require ts-node/register test/index.ts",
-    "test:redis-v4-specific-channel": "SPECIFIC_CHANNEL=1 nyc mocha --bail --require ts-node/register test/index.ts",
-    "test:redis-v3": "REDIS_CLIENT=redis-v3 nyc mocha --bail --require ts-node/register test/index.ts",
-    "test:ioredis": "REDIS_CLIENT=ioredis nyc mocha --bail --require ts-node/register test/index.ts",
+    "test": "npm run format:check && tsc && npm run test:default && npm run test:redis-v4-specific-channel && npm run test:redis-v3 && npm run test:ioredis",
+    "test:default": "nyc mocha --bail --require ts-node/register test/*.ts",
+    "test:redis-v4-specific-channel": "SPECIFIC_CHANNEL=1 npm run test:default",
+    "test:redis-v3": "REDIS_CLIENT=redis-v3 npm run test:default",
+    "test:ioredis": "REDIS_CLIENT=ioredis npm run test:default",
     "format:check": "prettier --parser typescript --check 'lib/**/*.ts' 'test/**/*.ts'",
     "format:fix": "prettier --parser typescript --write 'lib/**/*.ts' 'test/**/*.ts'",
     "prepack": "tsc"
@@ -41,7 +41,7 @@
     "prettier": "^2.1.2",
     "redis": "^4.0.0",
     "redis-v3": "npm:redis@^3.1.2",
-    "socket.io": "^4.5.0",
+    "socket.io": "^4.6.1",
     "socket.io-client": "^4.1.1",
     "ts-node": "^9.1.1",
     "typescript": "^4.0.5"

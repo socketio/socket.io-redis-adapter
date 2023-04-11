@@ -1,72 +1,30 @@
-import { createServer } from "http";
-import { Server, Socket as ServerSocket } from "socket.io";
-import { io as ioc, Socket as ClientSocket } from "socket.io-client";
-import { createAdapter } from "../lib";
-import { createClient } from "redis";
-import { AddressInfo } from "net";
-import { times } from "./util";
+import type { Server } from "socket.io";
+import type { Socket as ClientSocket } from "socket.io-client";
+import { setup, times } from "./util";
 import expect = require("expect.js");
 
-const NODES_COUNT = 3;
-
 describe("custom parser", () => {
-  let servers: Server[] = [],
-    serverSockets: ServerSocket[] = [],
-    clientSockets: ClientSocket[] = [],
-    redisClients: any[] = [];
+  let servers: Server[];
+  let clientSockets: ClientSocket[];
+  let cleanup: () => void;
 
   beforeEach(async () => {
-    for (let i = 1; i <= NODES_COUNT; i++) {
-      const httpServer = createServer();
-      const pubClient = createClient();
-      const subClient = createClient();
-
-      await Promise.all([pubClient.connect(), subClient.connect()]);
-
-      redisClients.push(pubClient, subClient);
-
-      const io = new Server(httpServer, {
-        adapter: createAdapter(pubClient, subClient, {
-          parser: {
-            decode(msg) {
-              return JSON.parse(msg);
-            },
-            encode(msg) {
-              return JSON.stringify(msg);
-            },
-          },
-        }),
-      });
-
-      await new Promise((resolve) => {
-        httpServer.listen(() => {
-          const port = (httpServer.address() as AddressInfo).port;
-          const clientSocket = ioc(`http://localhost:${port}`);
-
-          io.on("connection", async (socket) => {
-            clientSockets.push(clientSocket);
-            serverSockets.push(socket);
-            servers.push(io);
-            resolve();
-          });
-        });
-      });
-    }
+    const testContext = await setup({
+      parser: {
+        decode(msg) {
+          return JSON.parse(msg);
+        },
+        encode(msg) {
+          return JSON.stringify(msg);
+        },
+      },
+    });
+    servers = testContext.servers;
+    clientSockets = testContext.clientSockets;
+    cleanup = testContext.cleanup;
   });
 
-  afterEach(() => {
-    servers.forEach((server) => {
-      // @ts-ignore
-      server.httpServer.close();
-      server.of("/").adapter.close();
-    });
-    clientSockets.forEach((socket) => {
-      socket.disconnect();
-    });
-    redisClients.forEach((redisClient) => {
-      redisClient.disconnect();
-    });
-  });
+  afterEach(() => cleanup());
 
   it("broadcasts", (done) => {
     const partialDone = times(3, done);
