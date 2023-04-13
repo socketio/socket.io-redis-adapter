@@ -9,6 +9,7 @@
   - [CommonJS](#commonjs)
   - [ES6 module](#es6-modules)
   - [TypeScript](#typescript)
+  - [Sharded Redis Pub/Sub](#sharded-redis-pubsub)
 - [Compatibility table](#compatibility-table)
 - [How does it work under the hood?](#how-does-it-work-under-the-hood)
 - [API](#api)
@@ -117,6 +118,40 @@ will properly be broadcast to the clients through the Redis [Pub/Sub mechanism](
 
 If you need to emit events to socket.io instances from a non-socket.io
 process, you should use [socket.io-emitter](https://github.com/socketio/socket.io-emitter).
+
+### Sharded Redis Pub/Sub
+
+Sharded Pub/Sub was introduced in Redis 7.0 in order to help scaling the usage of Pub/Sub in cluster mode.
+
+Reference: https://redis.io/docs/manual/pubsub/#sharded-pubsub
+
+A dedicated adapter can be created with the `createShardedAdapter()` method:
+
+```js
+import { Server } from 'socket.io';
+import { createClient } from 'redis';
+import { createShardedAdapter } from '@socket.io/redis-adapter';
+
+const pubClient = createClient({ host: 'localhost', port: 6379 });
+const subClient = pubClient.duplicate();
+
+await Promise.all([
+  pubClient.connect(),
+  subClient.connect()
+]);
+
+const io = new Server({
+  adapter: createShardedAdapter(pubClient, subClient)
+});
+
+io.listen(3000);
+```
+
+Minimum requirements:
+
+- Redis 7.0
+- [`redis@4.6.0`](https://github.com/redis/node-redis/commit/3b1bad229674b421b2bc6424155b20d4d3e45bd1)
+
 
 ## Compatibility table
 

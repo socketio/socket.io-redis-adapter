@@ -1,6 +1,6 @@
 import uid2 = require("uid2");
 import msgpack = require("notepack.io");
-import { Adapter, BroadcastOptions, Room, SocketId } from "socket.io-adapter";
+import { Adapter, BroadcastOptions, Room } from "socket.io-adapter";
 
 const debug = require("debug")("socket.io-redis");
 
@@ -127,7 +127,8 @@ export class RedisAdapter extends Adapter {
 
     this.uid = uid2(6);
     this.requestsTimeout = opts.requestsTimeout || 5000;
-    this.publishOnSpecificResponseChannel = !!opts.publishOnSpecificResponseChannel;
+    this.publishOnSpecificResponseChannel =
+      !!opts.publishOnSpecificResponseChannel;
     this.parser = opts.parser || msgpack;
 
     const prefix = opts.key || "socket.io";
@@ -982,3 +983,5 @@ export class RedisAdapter extends Adapter {
     }
   }
 }
+
+export { createShardedAdapter } from "./sharded-adapter";

@@ -328,7 +328,10 @@ describe("@socket.io/redis-adapter", () => {
       servers[2].on("hello", (cb) => cb("3"));
     });
 
-    it("sends an event but timeout if one server does not respond", (done) => {
+    it("sends an event but timeout if one server does not respond", function (done) {
+      // TODO the serverSideEmit() method currently ignores the timeout() flag
+      this.timeout(6000);
+
       servers[0].serverSideEmit("hello", (err: Error, response: any) => {
         expect(err.message).to.be(
           "timeout reached: only 1 responses received out of 2"

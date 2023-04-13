@@ -16,12 +16,12 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 12
+          - 14
           - 18
 
     services:
       redis:
-        image: redis
+        image: redis:7
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s

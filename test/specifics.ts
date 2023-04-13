@@ -36,7 +36,10 @@ describe("specifics", () => {
     });
   });
 
-  it("unsubscribes when close is called", async () => {
+  it("unsubscribes when close is called", async function () {
+    if (process.env.SHARDED === "1") {
+      return this.skip();
+    }
     const parseInfo = (rawInfo: string) => {
       const info = {};
 
@@ -53,8 +56,9 @@ describe("specifics", () => {
     const getInfo = async (): Promise<any> => {
       if (process.env.REDIS_CLIENT === undefined) {
         return parseInfo(
-          await (servers[2].of("/")
-            .adapter as RedisAdapter).pubClient.sendCommand(["info"])
+          await (
+            servers[2].of("/").adapter as RedisAdapter
+          ).pubClient.sendCommand(["info"])
         );
       } else if (process.env.REDIS_CLIENT === "ioredis") {
         // @ts-ignore
@@ -187,11 +191,15 @@ describe("specifics", () => {
       expect(servers[0].of("/").adapter.requests.size).to.eql(0);
     });
 
-    it("returns all rooms across several nodes", async () => {
+    it("returns all rooms across several nodes", async function () {
+      if (process.env.SHARDED === "1") {
+        return this.skip();
+      }
       serverSockets[0].join("woot1");
 
-      const rooms = await (servers[0].of("/")
-        .adapter as RedisAdapter).allRooms();
+      const rooms = await (
+        servers[0].of("/").adapter as RedisAdapter
+      ).allRooms();
 
       expect(rooms).to.be.a(Set);
       expect(rooms.size).to.eql(4);

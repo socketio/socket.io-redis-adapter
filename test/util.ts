@@ -1,6 +1,10 @@
 import { createServer } from "http";
 import { AddressInfo } from "net";
-import { createAdapter, RedisAdapterOptions } from "../lib";
+import {
+  createAdapter,
+  createShardedAdapter,
+  RedisAdapterOptions,
+} from "../lib";
 import { Server, Socket as ServerSocket } from "socket.io";
 import { io as ioc, Socket as ClientSocket } from "socket.io-client";
 
@@ -65,7 +69,10 @@ export function setup(adapterOptions: Partial<RedisAdapterOptions> = {}) {
 
       const httpServer = createServer();
       const io = new Server(httpServer, {
-        adapter: createAdapter(pubClient, subClient, adapterOptions),
+        adapter:
+          process.env.SHARDED === "1"
+            ? createShardedAdapter(pubClient, subClient)
+            : createAdapter(pubClient, subClient, adapterOptions),
       });
       httpServer.listen(() => {
         const port = (httpServer.address() as AddressInfo).port;
