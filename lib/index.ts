@@ -915,10 +915,19 @@ export class RedisAdapter extends Adapter {
       });
     // node-redis
     } else if (typeof this.pubClient.pSubscribe === "function") {
-      if(Object.getPrototypeOf(Object.getPrototypeOf(this.pubClient)).constructor.name === 'RedisCluster') {
-        return this.pubClient
-        .sendCommand(undefined, true, ["pubsub", "numsub", this.requestChannel])
-        .then((res) => parseInt(res[1], 10));
+      if (Object.getPrototypeOf(Object.getPrototypeOf(this.pubClient)).constructor.name === 'RedisCluster') {
+        const nodes = this.pubClient.masters
+        return Promise.all(
+          nodes.map((node) => {
+            node.client.sendCommand(undefined, true, ["pubsub", "numsub", this.requestChannel])
+          })
+        ).then((values) => {
+          let numSub = 0;
+          values.map((value) => {
+            numSub += parseInt(value[1], 10)
+          })
+          return numSub
+        })
       } else {
         return this.pubClient
         .sendCommand(["pubsub", "numsub", this.requestChannel])
