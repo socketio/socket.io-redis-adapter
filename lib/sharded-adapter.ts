@@ -118,11 +118,11 @@ class ShardedRedisAdapter extends ClusterAdapter {
     ) {
       return Promise.all(
         this.pubClient.nodes().map((node) => {
-          node.sendCommand(["PUBSUB", "SHARDNUMSUB", this.channel]);
+          return node.sendCommand(["PUBSUB", "SHARDNUMSUB", this.channel]);
         })
       ).then((values) => {
         let numSub = 0;
-        values.map((value) => {
+        values.forEach((value) => {
           numSub += parseInt(value[1], 10);
         });
         return numSub;
