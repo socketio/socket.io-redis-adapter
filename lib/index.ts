@@ -900,7 +900,7 @@ export class RedisAdapter extends Adapter {
       this.pubClient.constructor.name === "Cluster" ||
       this.pubClient.isCluster
     ) {
-      // Cluster
+      // ioredis cluster
       const nodes = this.pubClient.nodes();
       return Promise.all(
         nodes.map((node) =>
@@ -914,11 +914,32 @@ export class RedisAdapter extends Adapter {
         return numSub;
       });
     } else if (typeof this.pubClient.pSubscribe === "function") {
-      return this.pubClient
-        .sendCommand(["pubsub", "numsub", this.requestChannel])
-        .then((res) => parseInt(res[1], 10));
+      // node-redis client
+      const isCluster = Array.isArray(this.pubClient.masters);
+      if (isCluster) {
+        const nodes = this.pubClient.masters;
+        return Promise.all(
+          nodes.map((node) => {
+            return node.client.sendCommand([
+              "pubsub",
+              "numsub",
+              this.requestChannel,
+            ]);
+          })
+        ).then((values) => {
+          let numSub = 0;
+          values.map((value) => {
+            numSub += parseInt(value[1], 10);
+          });
+          return numSub;
+        });
+      } else {
+        return this.pubClient
+          .sendCommand(["pubsub", "numsub", this.requestChannel])
+          .then((res) => parseInt(res[1], 10));
+      }
     } else {
-      // RedisClient or Redis
+      // ioredis or node-redis v3 client
       return new Promise((resolve, reject) => {
         this.pubClient.send_command(
           "pubsub",
