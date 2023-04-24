@@ -122,7 +122,7 @@ class ShardedRedisAdapter extends ClusterAdapter {
         })
       ).then((values) => {
         let numSub = 0;
-        values.map((value) => {
+        values.forEach((value) => {
           numSub += parseInt(value[1], 10);
         });
         return numSub;
