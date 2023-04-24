@@ -625,8 +625,9 @@ export abstract class ClusterAdapterWithHeartbeat extends ClusterAdapter {
   }
 
   override serverCount(): Promise<number> {
+    const now = Date.now();
     this.nodesMap.forEach((lastSeen, uid) => {
-      const nodeSeemsDown = Date.now() - lastSeen > this._opts.heartbeatTimeout;
+      const nodeSeemsDown = now - lastSeen > this._opts.heartbeatTimeout;
       if (nodeSeemsDown) {
         debug("node %s seems down", uid);
         this.nodesMap.delete(uid);
