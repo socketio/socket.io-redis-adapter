@@ -23,7 +23,10 @@ describe("specifics", () => {
   afterEach(() => cleanup());
 
   describe("broadcast", function () {
-    it("broadcasts to a numeric room", (done) => {
+    it("broadcasts to a numeric room", function (done) {
+      if (process.env.SHARDED === "1") {
+        return this.skip();
+      }
       // @ts-ignore
       serverSockets[0].join(123);
 

@@ -8,9 +8,42 @@ const debug = debugModule("socket.io-redis");
 const RETURN_BUFFERS = true;
 
 export interface ShardedRedisAdapterOptions {
+  /**
+   * The prefix for the Redis Pub/Sub channels.
+   *
+   * @default "socket.io"
+   */
   channelPrefix?: string;
+  /**
+   * The subscription mode impacts the number of Redis Pub/Sub channels:
+   *
+   * - "static": 2 channels per namespace
+   *
+   * Useful when used with dynamic namespaces.
+   *
+   * - "dynamic": (2 + 1 per public room) channels per namespace
+   *
+   * The default value, useful when some rooms have a low number of clients (so only a few Socket.IO servers are notified).
+   *
+   * Only public rooms (i.e. not related to a particular Socket ID) are taken in account, because:
+   *
+   * - a lot of connected clients would mean a lot of subscription/unsubscription
+   * - the Socket ID attribute is ephemeral
+   *
+   * @default "dynamic"
+   */
+  subscriptionMode?: "static" | "dynamic";
 }
 
+/**
+ * Create a new Adapter based on Redis sharded Pub/Sub introduced in Redis 7.0.
+ *
+ * @see https://redis.io/docs/manual/pubsub/#sharded-pubsub
+ *
+ * @param pubClient - the Redis client used to publish (from the `redis` package)
+ * @param subClient - the Redis client used to subscribe (from the `redis` package)
+ * @param opts - some additional options
+ */
 export function createShardedAdapter(
   pubClient: any,
   subClient: any,
@@ -36,6 +69,7 @@ class ShardedRedisAdapter extends ClusterAdapter {
     this.opts = Object.assign(
       {
         channelPrefix: "socket.io",
+        subscriptionMode: "dynamic",
       },
       opts
     );
@@ -48,23 +82,67 @@ class ShardedRedisAdapter extends ClusterAdapter {
     this.subClient.sSubscribe(this.channel, handler, RETURN_BUFFERS);
     this.subClient.sSubscribe(this.responseChannel, handler, RETURN_BUFFERS);
 
-    this.cleanup = () => {
-      return Promise.all([
-        this.subClient.sUnsubscribe(this.channel, handler),
-        this.subClient.sUnsubscribe(this.responseChannel, handler),
-      ]);
-    };
+    if (this.opts.subscriptionMode === "dynamic") {
+      this.on("create-room", (room) => {
+        const isPublicRoom = !this.sids.has(room);
+        if (isPublicRoom) {
+          this.subClient.sSubscribe(
+            this.dynamicChannel(room),
+            handler,
+            RETURN_BUFFERS
+          );
+        }
+      });
+
+      this.on("delete-room", (room) => {
+        const isPublicRoom = !this.sids.has(room);
+        if (isPublicRoom) {
+          this.subClient.sUnsubscribe(this.dynamicChannel(room));
+        }
+      });
+    }
   }
 
   override close(): Promise<void> | void {
-    this.cleanup();
+    const channels = [this.channel, this.responseChannel];
+
+    if (this.opts.subscriptionMode === "dynamic") {
+      this.rooms.forEach((_sids, room) => {
+        const isPublicRoom = !this.sids.has(room);
+        if (isPublicRoom) {
+          channels.push(this.dynamicChannel(room));
+        }
+      });
+    }
+
+    return this.subClient.sUnsubscribe(channels);
   }
 
   override publishMessage(message) {
-    debug("publishing message of type %s to %s", message.type, this.channel);
-    this.pubClient.sPublish(this.channel, this.encode(message));
+    const channel = this.computeChannel(message);
+    debug("publishing message of type %s to %s", message.type, channel);
+    this.pubClient.sPublish(channel, this.encode(message));
 
     return Promise.resolve("");
+  }
+
+  private computeChannel(message) {
+    // broadcast with ack can not use a dynamic channel, because the serverCount() method return the number of all
+    // servers, not only the ones where the given room exists
+    const useDynamicChannel =
+      this.opts.subscriptionMode === "dynamic" &&
+      message.type === MessageType.BROADCAST &&
+      message.data.requestId === undefined &&
+      message.data.opts.rooms.length === 1;
+    if (useDynamicChannel) {
+      return this.dynamicChannel(message.data.opts.rooms[0]);
+    } else {
+      return this.channel;
+    }
+  }
+
+  private dynamicChannel(room) {
+    return this.channel + room + "#";
   }
 
   override publishResponse(requesterUid, response) {
@@ -104,10 +182,10 @@ class ShardedRedisAdapter extends ClusterAdapter {
       return debug("invalid format: %s", e.message);
     }
 
-    if (channel.toString() === this.channel) {
-      this.onMessage(message, "");
-    } else {
+    if (channel.toString() === this.responseChannel) {
       this.onResponse(message);
+    } else {
+      this.onMessage(message);
     }
   }
 
