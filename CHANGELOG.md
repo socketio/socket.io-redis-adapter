@@ -1,5 +1,6 @@
 # History
 
+- [8.2.0](820-2023-05-02) (May 2023)
 - [8.1.0](810-2023-02-08) (Feb 2023)
 - [8.0.1](801-2023-01-11) (Jan 2023)
 - [**8.0.0**](#800-2022-12-07) (Dec 2022)
@@ -18,6 +19,85 @@
 
 
 # Release notes
+
+## [8.2.0](https://github.com/socketio/socket.io-redis-adapter/compare/8.1.0...8.2.0) (2023-05-02)
+
+
+### Bug Fixes
+
+* cleanup error handler to prevent memory leak ([#490](https://github.com/socketio/socket.io-redis-adapter/issues/490)) ([b5da02d](https://github.com/socketio/socket.io-redis-adapter/commit/b5da02d779490f73c6c041999d10be1c98494f84))
+
+
+### Features
+
+#### Sharded Pub/Sub
+
+Sharded Pub/Sub was introduced in Redis 7.0 in order to help scaling the usage of Pub/Sub in cluster mode.
+
+Reference: https://redis.io/docs/manual/pubsub/#sharded-pubsub
+
+A dedicated adapter can be created with the `createShardedAdapter()` method:
+
+```js
+import { Server } from 'socket.io';
+import { createClient } from 'redis';
+import { createShardedAdapter } from '@socket.io/redis-adapter';
+
+const pubClient = createClient({ host: 'localhost', port: 6379 });
+const subClient = pubClient.duplicate();
+
+await Promise.all([
+  pubClient.connect(),
+  subClient.connect()
+]);
+
+const io = new Server({
+  adapter: createShardedAdapter(pubClient, subClient)
+});
+
+io.listen(3000);
+```
+
+Minimum requirements:
+
+- Redis 7.0
+- [`redis@4.6.0`](https://github.com/redis/node-redis/commit/3b1bad229674b421b2bc6424155b20d4d3e45bd1)
+
+Added in [e70b1bd](https://github.com/socketio/socket.io-redis-adapter/commit/e70b1bde105d88eaa43272ff094c5540981a66d3).
+
+#### Support for node-redis cluster
+
+The `redis` package now supports Redis cluster.
+
+Added in [77ef42c](https://github.com/socketio/socket.io-redis-adapter/commit/77ef42c95d1ab637c33e2f69af5e0f7a12072629).
+
+#### Subscription modes
+
+The `subscriptionMode` option allows to configure how many Redis Pub/Sub channels are used:
+
+- "static": 2 channels per namespace
+
+Useful when used with dynamic namespaces.
+
+- "dynamic": (2 + 1 per public room) channels per namespace
+
+The default value, useful when some rooms have a low number of clients (so only a few Socket.IO servers are notified).
+
+```js
+const io = new Server({
+  adapter: createShardedAdapter(pubClient, subClient, {
+    subscriptionMode: "static"
+  })
+});
+```
+
+Added in [d3388bf](https://github.com/socketio/socket.io-redis-adapter/commit/d3388bf7b5b64ff6d2c25a874f4956273c8e3f58).
+
+### Credits
+
+Huge thanks to [@winchell](https://github.com/winchell) for helping!
+
+
 
 ## [8.1.0](https://github.com/socketio/socket.io-redis-adapter/compare/8.0.1...8.1.0) (2023-02-08)
 
