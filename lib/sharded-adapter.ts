@@ -1,6 +1,6 @@
 import { ClusterAdapter, ClusterMessage, MessageType } from "./cluster-adapter";
 import { decode, encode } from "notepack.io";
-import { hasBinary } from "./util";
+import { hasBinary, parseNumSubResponse, sumValues } from "./util";
 import debugModule from "debug";
 
 const debug = debugModule("socket.io-redis");
@@ -60,7 +60,6 @@ class ShardedRedisAdapter extends ClusterAdapter {
   private readonly opts: Required<ShardedRedisAdapterOptions>;
   private readonly channel: string;
   private readonly responseChannel: string;
-  private readonly cleanup: () => void;
 
   constructor(nsp, pubClient, subClient, opts: ShardedRedisAdapterOptions) {
     super(nsp);
@@ -196,19 +195,15 @@ class ShardedRedisAdapter extends ClusterAdapter {
     ) {
       return Promise.all(
         this.pubClient.nodes().map((node) => {
-          return node.sendCommand(["PUBSUB", "SHARDNUMSUB", this.channel]);
+          return node
+            .sendCommand(["PUBSUB", "SHARDNUMSUB", this.channel])
+            .then(parseNumSubResponse);
         })
-      ).then((values) => {
-        let numSub = 0;
-        values.forEach((value) => {
-          numSub += parseInt(value[1], 10);
-        });
-        return numSub;
-      });
+      ).then(sumValues);
     } else {
       return this.pubClient
         .sendCommand(["PUBSUB", "SHARDNUMSUB", this.channel])
-        .then((res) => parseInt(res[1], 10));
+        .then(parseNumSubResponse);
     }
   }
 }

@@ -34,3 +34,13 @@ export function hasBinary(obj: any, toJSON?: boolean): boolean {
 export function randomId() {
   return randomBytes(8).toString("hex");
 }
+
+export function parseNumSubResponse(res) {
+  return parseInt(res[1], 10);
+}
+
+export function sumValues(values) {
+  return values.reduce((acc, val) => {
+    return acc + val;
+  }, 0);
+}
