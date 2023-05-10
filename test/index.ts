@@ -75,7 +75,8 @@ describe("@socket.io/redis-adapter", () => {
       clientSockets[1].on("test", () => done());
       clientSockets[2].on("test", shouldNotHappen(done));
 
-      servers[0].to("room1").emit("test");
+      // delay is needed for the sharded adapter in dynamic mode
+      setTimeout(() => servers[0].to("room1").emit("test"), 50);
     });
 
     it("broadcasts to all clients except in room", (done) => {
