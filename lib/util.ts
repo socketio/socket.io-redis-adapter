@@ -44,3 +44,89 @@ export function sumValues(values) {
     return acc + val;
   }, 0);
 }
+
+const RETURN_BUFFERS = true;
+
+/**
+ * Whether the client comes from the `redis` package
+ *
+ * @param redisClient
+ *
+ * @see https://github.com/redis/node-redis
+ */
+function isRedisV4Client(redisClient: any) {
+  return typeof redisClient.sSubscribe === "function";
+}
+
+export function SSUBSCRIBE(
+  redisClient: any,
+  channel: string,
+  handler: (rawMessage: Buffer, channel: Buffer) => void
+) {
+  if (isRedisV4Client(redisClient)) {
+    redisClient.sSubscribe(channel, handler, RETURN_BUFFERS);
+  } else {
+    redisClient.ssubscribe(channel);
+
+    redisClient.on("smessageBuffer", (rawChannel, message) => {
+      if (rawChannel.toString() === channel) {
+        handler(message, rawChannel);
+      }
+    });
+  }
+}
+
+export function SUNSUBSCRIBE(redisClient: any, channel: string | string[]) {
+  if (isRedisV4Client(redisClient)) {
+    redisClient.sUnsubscribe(channel);
+  } else {
+    redisClient.sunsubscribe(channel);
+  }
+}
+
+export function SPUBLISH(
+  redisClient: any,
+  channel: string,
+  payload: string | Uint8Array
+) {
+  if (isRedisV4Client(redisClient)) {
+    redisClient.sPublish(channel, payload);
+  } else {
+    redisClient.spublish(channel, payload);
+  }
+}
+
+export function PUBSUB(redisClient: any, arg: string, channel: string) {
+  if (redisClient.constructor.name === "Cluster" || redisClient.isCluster) {
+    return Promise.all(
+      redisClient.nodes().map((node) => {
+        return node
+          .sendCommand(["PUBSUB", arg, channel])
+          .then(parseNumSubResponse);
+      })
+    ).then(sumValues);
+  } else if (isRedisV4Client(redisClient)) {
+    const isCluster = Array.isArray(redisClient.masters);
+    if (isCluster) {
+      const nodes = redisClient.masters;
+      return Promise.all(
+        nodes.map((node) => {
+          return node.client
+            .sendCommand(["PUBSUB", arg, channel])
+            .then(parseNumSubResponse);
+        })
+      ).then(sumValues);
+    } else {
+      return redisClient
+        .sendCommand(["PUBSUB", arg, channel])
+        .then(parseNumSubResponse);
+    }
+  } else {
+    return new Promise((resolve, reject) => {
+      redisClient.send_command("PUBSUB", [arg, channel], (err, numSub) => {
+        if (err) return reject(err);
+        resolve(parseNumSubResponse(numSub));
+      });
+    });
+  }
+}

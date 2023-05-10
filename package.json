@@ -31,7 +31,7 @@
     "@types/mocha": "^8.2.1",
     "@types/node": "^14.14.7",
     "expect.js": "0.3.1",
-    "ioredis": "^4.0.0",
+    "ioredis": "^5.3.2",
     "mocha": "^10.1.0",
     "nyc": "^15.1.0",
     "prettier": "^2.8.7",

@@ -1,11 +1,9 @@
 import { ClusterAdapter, ClusterMessage, MessageType } from "./cluster-adapter";
 import { decode, encode } from "notepack.io";
-import { hasBinary, parseNumSubResponse, sumValues } from "./util";
+import { hasBinary, PUBSUB, SPUBLISH, SSUBSCRIBE, SUNSUBSCRIBE } from "./util";
 import debugModule from "debug";
 
 const debug = debugModule("socket.io-redis");
-
-const RETURN_BUFFERS = true;
 
 export interface ShardedRedisAdapterOptions {
   /**
@@ -78,25 +76,21 @@ class ShardedRedisAdapter extends ClusterAdapter {
 
     const handler = (message, channel) => this.onRawMessage(message, channel);
 
-    this.subClient.sSubscribe(this.channel, handler, RETURN_BUFFERS);
-    this.subClient.sSubscribe(this.responseChannel, handler, RETURN_BUFFERS);
+    SSUBSCRIBE(this.subClient, this.channel, handler);
+    SSUBSCRIBE(this.subClient, this.responseChannel, handler);
 
     if (this.opts.subscriptionMode === "dynamic") {
       this.on("create-room", (room) => {
         const isPublicRoom = !this.sids.has(room);
         if (isPublicRoom) {
-          this.subClient.sSubscribe(
-            this.dynamicChannel(room),
-            handler,
-            RETURN_BUFFERS
-          );
+          SSUBSCRIBE(this.subClient, this.dynamicChannel(room), handler);
         }
       });
 
       this.on("delete-room", (room) => {
         const isPublicRoom = !this.sids.has(room);
         if (isPublicRoom) {
-          this.subClient.sUnsubscribe(this.dynamicChannel(room));
+          SUNSUBSCRIBE(this.subClient, this.dynamicChannel(room));
         }
       });
     }
@@ -114,13 +108,13 @@ class ShardedRedisAdapter extends ClusterAdapter {
       });
     }
 
-    return this.subClient.sUnsubscribe(channels);
+    return SUNSUBSCRIBE(this.subClient, channels);
   }
 
   override publishMessage(message) {
     const channel = this.computeChannel(message);
     debug("publishing message of type %s to %s", message.type, channel);
-    this.pubClient.sPublish(channel, this.encode(message));
+    SPUBLISH(this.pubClient, channel, this.encode(message));
 
     return Promise.resolve("");
   }
@@ -147,7 +141,8 @@ class ShardedRedisAdapter extends ClusterAdapter {
   override publishResponse(requesterUid, response) {
     debug("publishing response of type %s to %s", response.type, requesterUid);
 
-    this.pubClient.sPublish(
+    SPUBLISH(
+      this.pubClient,
       `${this.channel}${requesterUid}#`,
       this.encode(response)
     );
@@ -189,21 +184,6 @@ class ShardedRedisAdapter extends ClusterAdapter {
   }
 
   override serverCount(): Promise<number> {
-    if (
-      this.pubClient.constructor.name === "Cluster" ||
-      this.pubClient.isCluster
-    ) {
-      return Promise.all(
-        this.pubClient.nodes().map((node) => {
-          return node
-            .sendCommand(["PUBSUB", "SHARDNUMSUB", this.channel])
-            .then(parseNumSubResponse);
-        })
-      ).then(sumValues);
-    } else {
-      return this.pubClient
-        .sendCommand(["PUBSUB", "SHARDNUMSUB", this.channel])
-        .then(parseNumSubResponse);
-    }
+    return PUBSUB(this.pubClient, "SHARDNUMSUB", this.channel);
   }
 }

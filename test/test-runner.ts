@@ -2,7 +2,7 @@ import { testSuite as commonTestSuite } from "./index";
 import { testSuite as specificsTestSuite } from "./specifics";
 import { createAdapter, createShardedAdapter } from "../lib";
 import { createClient, createCluster } from "redis";
-import Redis from "ioredis";
+import { Redis, Cluster } from "ioredis";
 import { createClient as createClientV3 } from "redis-v3";
 
 const clusterNodes = [
@@ -123,7 +123,7 @@ describe("@socket.io/redis-adapter", () => {
 
   describe("ioredis standalone", () =>
     testSuite(async () => {
-      const pubClient = Redis.createClient();
+      const pubClient = new Redis();
       const subClient = pubClient.duplicate();
 
       return [
@@ -139,7 +139,7 @@ describe("@socket.io/redis-adapter", () => {
 
   describe("ioredis cluster", () =>
     testSuite(async () => {
-      const pubClient = new Redis.Cluster(clusterNodes);
+      const pubClient = new Cluster(clusterNodes);
       const subClient = pubClient.duplicate();
 
       return [
@@ -194,6 +194,65 @@ describe("@socket.io/redis-adapter", () => {
         ];
       },
       "redis@4",
+      true
+    ));
+
+  describe("[sharded] redis@4 cluster", () =>
+    testSuite(
+      async () => {
+        const pubClient = createCluster({
+          rootNodes: clusterNodes,
+        });
+        const subClient = pubClient.duplicate();
+
+        await Promise.all([pubClient.connect(), subClient.connect()]);
+
+        return [
+          createShardedAdapter(pubClient, subClient),
+          () => {
+            pubClient.disconnect();
+            subClient.disconnect();
+          },
+        ];
+      },
+      "redis@4",
+      true
+    ));
+
+  describe("[sharded] ioredis standalone", () =>
+    testSuite(
+      async () => {
+        const pubClient = new Redis();
+        const subClient = pubClient.duplicate();
+
+        return [
+          createShardedAdapter(pubClient, subClient),
+          () => {
+            pubClient.disconnect();
+            subClient.disconnect();
+          },
+        ];
+      },
+      "ioredis",
+      true
+    ));
+
+  // FIXME see https://github.com/luin/ioredis/issues/1759
+  describe.skip("[sharded] ioredis cluster", () =>
+    testSuite(
+      async () => {
+        const pubClient = new Cluster(clusterNodes);
+        const subClient = pubClient.duplicate();
+
+        return [
+          createShardedAdapter(pubClient, subClient),
+          () => {
+            pubClient.disconnect();
+            subClient.disconnect();
+          },
+        ];
+      },
+      "ioredis",
       true
     ));
 
