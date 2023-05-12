@@ -1,10 +1,5 @@
 import { createServer } from "http";
 import { AddressInfo } from "net";
-import {
-  createAdapter,
-  createShardedAdapter,
-  RedisAdapterOptions,
-} from "../lib";
 import { Server, Socket as ServerSocket } from "socket.io";
 import { io as ioc, Socket as ClientSocket } from "socket.io-client";
 
@@ -37,42 +32,19 @@ interface TestContext {
   cleanup: () => void;
 }
 
-async function createRedisClient() {
-  switch (process.env.REDIS_CLIENT) {
-    case "ioredis":
-      return require("ioredis").createClient();
-    case "redis-v3":
-      return require("redis-v3").createClient();
-    default:
-      // redis@4
-      const client = require("redis").createClient();
-      await client.connect();
-      return client;
-  }
-}
-
-export function setup(adapterOptions: Partial<RedisAdapterOptions> = {}) {
+export function setup(createAdapter: any) {
   const servers = [];
   const serverSockets = [];
   const clientSockets = [];
-  const redisClients = [];
+  const redisCleanupFunctions = [];
 
   return new Promise<TestContext>(async (resolve) => {
     for (let i = 1; i <= NODES_COUNT; i++) {
-      const [pubClient, subClient] = await Promise.all([
-        createRedisClient(),
-        createRedisClient(),
-      ]);
-
-      adapterOptions.publishOnSpecificResponseChannel =
-        process.env.SPECIFIC_CHANNEL !== undefined;
+      const [adapter, redisCleanup] = await createAdapter();
 
       const httpServer = createServer();
       const io = new Server(httpServer, {
-        adapter:
-          process.env.SHARDED === "1"
-            ? createShardedAdapter(pubClient, subClient)
-            : createAdapter(pubClient, subClient, adapterOptions),
+        adapter,
       });
       httpServer.listen(() => {
         const port = (httpServer.address() as AddressInfo).port;
@@ -82,7 +54,7 @@ export function setup(adapterOptions: Partial<RedisAdapterOptions> = {}) {
           clientSockets.push(clientSocket);
           serverSockets.push(socket);
           servers.push(io);
-          redisClients.push(pubClient, subClient);
+          redisCleanupFunctions.push(redisCleanup);
           if (servers.length === NODES_COUNT) {
             await sleep(200);
 
@@ -99,13 +71,7 @@ export function setup(adapterOptions: Partial<RedisAdapterOptions> = {}) {
                 clientSockets.forEach((socket) => {
                   socket.disconnect();
                 });
-                redisClients.forEach((redisClient) => {
-                  if (process.env.REDIS_CLIENT === "redis-v3") {
-                    redisClient.quit();
-                  } else {
-                    redisClient.disconnect();
-                  }
-                });
+                redisCleanupFunctions.forEach((fn) => fn());
               },
             });
           }

@@ -2,6 +2,8 @@ import type { Server } from "socket.io";
 import type { Socket as ClientSocket } from "socket.io-client";
 import { setup, times } from "./util";
 import expect = require("expect.js");
+import { createClient } from "redis";
+import { createAdapter } from "../lib";
 
 describe("custom parser", () => {
   let servers: Server[];
@@ -9,15 +11,28 @@ describe("custom parser", () => {
   let cleanup: () => void;
 
   beforeEach(async () => {
-    const testContext = await setup({
-      parser: {
-        decode(msg) {
-          return JSON.parse(msg);
+    const testContext = await setup(async () => {
+      const pubClient = createClient();
+      const subClient = pubClient.duplicate();
+
+      await Promise.all([pubClient.connect(), subClient.connect()]);
+
+      return [
+        createAdapter(pubClient, subClient, {
+          parser: {
+            decode(msg) {
+              return JSON.parse(msg);
+            },
+            encode(msg) {
+              return JSON.stringify(msg);
+            },
+          },
+        }),
+        () => {
+          pubClient.disconnect();
+          subClient.disconnect();
         },
-        encode(msg) {
-          return JSON.stringify(msg);
-        },
-      },
+      ];
     });
     servers = testContext.servers;
     clientSockets = testContext.clientSockets;

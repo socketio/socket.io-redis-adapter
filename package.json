@@ -13,12 +13,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "npm run format:check && tsc && npm run test:default && npm run test:redis-v4-specific-channel && npm run test:redis-v3 && npm run test:ioredis && npm run test:sharded",
-    "test:default": "nyc mocha --bail --require ts-node/register test/*.ts",
-    "test:redis-v4-specific-channel": "SPECIFIC_CHANNEL=1 npm run test:default",
-    "test:redis-v3": "REDIS_CLIENT=redis-v3 npm run test:default",
-    "test:ioredis": "REDIS_CLIENT=ioredis npm run test:default",
-    "test:sharded": "SHARDED=1 npm run test:default",
+    "test": "npm run format:check && tsc && nyc mocha --bail --require ts-node/register test/test-runner.ts",
     "format:check": "prettier --parser typescript --check 'lib/**/*.ts' 'test/**/*.ts'",
     "format:fix": "prettier --parser typescript --write 'lib/**/*.ts' 'test/**/*.ts'",
     "prepack": "tsc"
