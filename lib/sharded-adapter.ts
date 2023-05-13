@@ -108,7 +108,9 @@ class ShardedRedisAdapter extends ClusterAdapter {
       });
     }
 
-    return SUNSUBSCRIBE(this.subClient, channels);
+    return Promise.all(
+      channels.map((channel) => SUNSUBSCRIBE(this.subClient, channel))
+    ).then();
   }
 
   override publishMessage(message) {
