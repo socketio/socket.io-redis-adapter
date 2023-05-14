@@ -1,5 +1,6 @@
 # History
 
+- [8.2.1](821-2023-05-14) (May 2023)
 - [8.2.0](820-2023-05-02) (May 2023)
 - [8.1.0](810-2023-02-08) (Feb 2023)
 - [8.0.1](801-2023-01-11) (Jan 2023)
@@ -19,6 +20,16 @@
 
 
 # Release notes
+
+## [8.2.1](https://github.com/socketio/socket.io-redis-adapter/compare/8.2.0...8.2.1) (2023-05-14)
+
+
+### Bug Fixes
+
+* **sharded:** ensure compatibility with ioredis ([42c8ab6](https://github.com/socketio/socket.io-redis-adapter/commit/42c8ab6764a3d4c855b27eea35b4e0cda9c34b37))
+* **sharded:** properly unsubscribe when closing ([2da8d9e](https://github.com/socketio/socket.io-redis-adapter/commit/2da8d9e57afbed3201f818bca77ac17ce9636fa3))
+
+
 
 ## [8.2.0](https://github.com/socketio/socket.io-redis-adapter/compare/8.1.0...8.2.0) (2023-05-02)
 
