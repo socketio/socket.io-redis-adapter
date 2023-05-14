@@ -1,7 +1,7 @@
 import uid2 = require("uid2");
 import msgpack = require("notepack.io");
 import { Adapter, BroadcastOptions, Room } from "socket.io-adapter";
-import { parseNumSubResponse, sumValues } from "./util";
+import { PUBSUB } from "./util";
 
 const debug = require("debug")("socket.io-redis");
 
@@ -891,49 +891,7 @@ export class RedisAdapter extends Adapter {
   }
 
   override serverCount(): Promise<number> {
-    if (
-      this.pubClient.constructor.name === "Cluster" ||
-      this.pubClient.isCluster
-    ) {
-      // ioredis cluster
-      const nodes = this.pubClient.nodes();
-      return Promise.all(
-        nodes.map((node) =>
-          node
-            .send_command("pubsub", ["numsub", this.requestChannel])
-            .then(parseNumSubResponse)
-        )
-      ).then(sumValues);
-    } else if (typeof this.pubClient.pSubscribe === "function") {
-      // node-redis client
-      const isCluster = Array.isArray(this.pubClient.masters);
-      if (isCluster) {
-        const nodes = this.pubClient.masters;
-        return Promise.all(
-          nodes.map((node) => {
-            return node.client
-              .sendCommand(["pubsub", "numsub", this.requestChannel])
-              .then(parseNumSubResponse);
-          })
-        ).then(sumValues);
-      } else {
-        return this.pubClient
-          .sendCommand(["pubsub", "numsub", this.requestChannel])
-          .then(parseNumSubResponse);
-      }
-    } else {
-      // ioredis or node-redis v3 client
-      return new Promise((resolve, reject) => {
-        this.pubClient.send_command(
-          "pubsub",
-          ["numsub", this.requestChannel],
-          (err, numSub) => {
-            if (err) return reject(err);
-            resolve(parseNumSubResponse(numSub));
-          }
-        );
-      });
-    }
+    return PUBSUB(this.pubClient, "NUMSUB", this.requestChannel);
   }
 
   close(): Promise<void> | void {

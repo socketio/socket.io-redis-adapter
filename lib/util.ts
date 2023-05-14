@@ -98,16 +98,18 @@ export function SPUBLISH(
 
 export function PUBSUB(redisClient: any, arg: string, channel: string) {
   if (redisClient.constructor.name === "Cluster" || redisClient.isCluster) {
+    // ioredis cluster
     return Promise.all(
       redisClient.nodes().map((node) => {
         return node
-          .sendCommand(["PUBSUB", arg, channel])
+          .send_command("PUBSUB", [arg, channel])
           .then(parseNumSubResponse);
       })
     ).then(sumValues);
   } else if (isRedisV4Client(redisClient)) {
     const isCluster = Array.isArray(redisClient.masters);
     if (isCluster) {
+      // redis@4 cluster
       const nodes = redisClient.masters;
       return Promise.all(
         nodes.map((node) => {
@@ -117,11 +119,13 @@ export function PUBSUB(redisClient: any, arg: string, channel: string) {
         })
       ).then(sumValues);
     } else {
+      // redis@4 standalone
       return redisClient
         .sendCommand(["PUBSUB", arg, channel])
         .then(parseNumSubResponse);
     }
   } else {
+    // ioredis / redis@3 standalone
     return new Promise((resolve, reject) => {
       redisClient.send_command("PUBSUB", [arg, channel], (err, numSub) => {
         if (err) return reject(err);
