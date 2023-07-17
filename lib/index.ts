@@ -942,7 +942,7 @@ export class RedisAdapter extends Adapter {
     this.subClient.off("error", this.friendlyErrorHandler);
   }
   delAll(id: SocketId) {
-    // Call general adapter cleanup
+    // Call parent adapter cleanup
     super.delAll(id);
     // Unsubscribe from Redis topics
     this.close();
