@@ -1,6 +1,6 @@
 import uid2 = require("uid2");
 import msgpack = require("notepack.io");
-import { Adapter, BroadcastOptions, Room } from "socket.io-adapter";
+import { Adapter, BroadcastOptions, Room, SocketId } from "socket.io-adapter";
 import { PUBSUB } from "./util";
 
 const debug = require("debug")("socket.io-redis");
@@ -940,6 +940,12 @@ export class RedisAdapter extends Adapter {
 
     this.pubClient.off("error", this.friendlyErrorHandler);
     this.subClient.off("error", this.friendlyErrorHandler);
+  }
+  delAll(id: SocketId) {
+    // Call general adapter cleanup
+    super.delAll(id);
+    // Unsubscribe from Redis topics
+    this.close();
   }
 }
 
