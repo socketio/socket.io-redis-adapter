@@ -1,7 +1,7 @@
 import type { Server, Socket as ServerSocket } from "socket.io";
 import type { Socket as ClientSocket } from "socket.io-client";
 import expect = require("expect.js");
-import { shouldNotHappen, setup } from "./util";
+import { shouldNotHappen, setup, times } from "./util";
 import type { RedisAdapter } from "../lib";
 
 export function testSuite(
@@ -39,6 +39,20 @@ export function testSuite(
 
         // @ts-ignore
         servers[1].to(123).emit("test");
+      });
+
+      it("broadcasts to the socket's private room", function (done) {
+        const partialDone = times(servers.length * clientSockets.length, done);
+
+        clientSockets.forEach((clientSocket) => {
+          clientSocket.on("test", () => partialDone());
+        });
+
+        servers.forEach((server) => {
+          server.fetchSockets().then((sockets) => {
+            sockets.forEach((socket) => socket.emit("test"));
+          });
+        });
       });
     });
 
