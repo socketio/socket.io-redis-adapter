@@ -160,7 +160,8 @@ Minimum requirements:
 | 4.x                   | 1.x                      |
 | 5.x                   | 2.x                      |
 | 6.0.x                 | 3.x                      |
-| 6.1.x and above       | 4.x                      |
+| 6.1.x                 | 4.x                      |
+| 7.x and above         | 4.3.1 and above          |
 
 ## How does it work under the hood?
 
