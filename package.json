@@ -13,10 +13,11 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
+    "compile": "rimraf ./dist && tsc",
     "test": "npm run format:check && tsc && nyc mocha --bail --require ts-node/register test/test-runner.ts",
     "format:check": "prettier --parser typescript --check 'lib/**/*.ts' 'test/**/*.ts'",
     "format:fix": "prettier --parser typescript --write 'lib/**/*.ts' 'test/**/*.ts'",
-    "prepack": "tsc"
+    "prepack": "npm run compile"
   },
   "dependencies": {
     "debug": "~4.3.1",
@@ -37,6 +38,7 @@
     "prettier": "^2.8.7",
     "redis": "^4.6.6",
     "redis-v3": "npm:redis@^3.1.2",
+    "rimraf": "^5.0.5",
     "socket.io": "^4.6.1",
     "socket.io-client": "^4.1.1",
     "ts-node": "^10.9.1",
