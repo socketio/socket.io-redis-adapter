@@ -58,6 +58,8 @@ function isRedisV4Client(redisClient: any) {
   return typeof redisClient.sSubscribe === "function";
 }
 
+const kHandlers = Symbol("handlers");
+
 export function SSUBSCRIBE(
   redisClient: any,
   channel: string,
@@ -66,13 +68,17 @@ export function SSUBSCRIBE(
   if (isRedisV4Client(redisClient)) {
     redisClient.sSubscribe(channel, handler, RETURN_BUFFERS);
   } else {
+    if (!redisClient[kHandlers]) {
+      redisClient[kHandlers] = new Map();
+      redisClient.on("smessageBuffer", (rawChannel, message) => {
+        redisClient[kHandlers].get(rawChannel.toString())?.(
+          message,
+          rawChannel
+        );
+      });
+    }
+    redisClient[kHandlers].set(channel, handler);
     redisClient.ssubscribe(channel);
-
-    redisClient.on("smessageBuffer", (rawChannel, message) => {
-      if (rawChannel.toString() === channel) {
-        handler(message, rawChannel);
-      }
-    });
   }
 }
 
@@ -81,6 +87,11 @@ export function SUNSUBSCRIBE(redisClient: any, channel: string | string[]) {
     redisClient.sUnsubscribe(channel);
   } else {
     redisClient.sunsubscribe(channel);
+    if (Array.isArray(channel)) {
+      channel.forEach((c) => redisClient[kHandlers].delete(c));
+    } else {
+      redisClient[kHandlers].delete(channel);
+    }
   }
 }
 
