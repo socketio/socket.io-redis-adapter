@@ -58,27 +58,26 @@ function isRedisV4Client(redisClient: any) {
   return typeof redisClient.sSubscribe === "function";
 }
 
-type SMessageBufferHandler = (rawMessage: Buffer, channel: Buffer) => void;
-let smessageBufferHandlers: Map<string, SMessageBufferHandler>;
+const kHandlers = Symbol("handlers");
 
 export function SSUBSCRIBE(
   redisClient: any,
   channel: string,
-  handler: SMessageBufferHandler
+  handler: (rawMessage: Buffer, channel: Buffer) => void
 ) {
   if (isRedisV4Client(redisClient)) {
     redisClient.sSubscribe(channel, handler, RETURN_BUFFERS);
   } else {
-    if (!smessageBufferHandlers) {
-      smessageBufferHandlers = new Map();
+    if (!redisClient[kHandlers]) {
+      redisClient[kHandlers] = new Map();
       redisClient.on("smessageBuffer", (rawChannel, message) => {
-        const channelHandler = smessageBufferHandlers.get(
-          rawChannel.toString()
+        redisClient[kHandlers].get(rawChannel.toString())?.(
+          message,
+          rawChannel
         );
-        channelHandler?.(message, rawChannel);
       });
     }
-    smessageBufferHandlers.set(channel, handler);
+    redisClient[kHandlers].set(channel, handler);
     redisClient.ssubscribe(channel);
   }
 }
@@ -89,9 +88,9 @@ export function SUNSUBSCRIBE(redisClient: any, channel: string | string[]) {
   } else {
     redisClient.sunsubscribe(channel);
     if (Array.isArray(channel)) {
-      channel.forEach((c) => smessageBufferHandlers.delete(c));
+      channel.forEach((c) => redisClient[kHandlers].delete(c));
     } else {
-      smessageBufferHandlers.delete(channel);
+      redisClient[kHandlers].delete(channel);
     }
   }
 }
