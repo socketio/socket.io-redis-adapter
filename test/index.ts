@@ -110,6 +110,14 @@ export function testSuite(createAdapter: any) {
         servers[0].local.emit("test");
       });
 
+      it("broadcasts to a single client", (done) => {
+        clientSockets[0].on("test", shouldNotHappen(done));
+        clientSockets[1].on("test", () => done());
+        clientSockets[2].on("test", shouldNotHappen(done));
+
+        servers[0].to(serverSockets[1].id).emit("test");
+      });
+
       it("broadcasts with multiple acknowledgements", (done) => {
         clientSockets[0].on("test", (cb) => cb(1));
         clientSockets[1].on("test", (cb) => cb(2));
