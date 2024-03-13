@@ -24,7 +24,7 @@
     "uid2": "1.0.0"
   },
   "peerDependencies": {
-    "socket.io-adapter": "^2.4.0"
+    "socket.io-adapter": "^2.5.4"
   },
   "devDependencies": {
     "@types/expect.js": "^0.3.29",

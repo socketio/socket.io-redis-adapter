@@ -1,4 +1,10 @@
-import { ClusterAdapter, ClusterMessage, MessageType } from "./cluster-adapter";
+import {
+  ClusterAdapter,
+  ClusterMessage,
+  ClusterResponse,
+  MessageType,
+  Offset,
+} from "socket.io-adapter";
 import { decode, encode } from "notepack.io";
 import { hasBinary, PUBSUB, SPUBLISH, SSUBSCRIBE, SUNSUBSCRIBE } from "./util";
 import debugModule from "debug";
@@ -117,12 +123,13 @@ class ShardedRedisAdapter extends ClusterAdapter {
     ).then();
   }
 
-  override publishMessage(message) {
+  override doPublish(message: ClusterMessage): Promise<Offset> {
     const channel = this.computeChannel(message);
     debug("publishing message of type %s to %s", message.type, channel);
-    SPUBLISH(this.pubClient, channel, this.encode(message));
 
-    return Promise.resolve("");
+    return SPUBLISH(this.pubClient, channel, this.encode(message)).then(
+      () => ""
+    );
   }
 
   private computeChannel(message) {
@@ -145,17 +152,20 @@ class ShardedRedisAdapter extends ClusterAdapter {
     return this.channel + room + "#";
   }
 
-  override publishResponse(requesterUid, response) {
+  override doPublishResponse(
+    requesterUid: string,
+    response: ClusterResponse
+  ): Promise<void> {
     debug("publishing response of type %s to %s", response.type, requesterUid);
 
-    SPUBLISH(
+    return SPUBLISH(
       this.pubClient,
       `${this.channel}${requesterUid}#`,
       this.encode(response)
-    );
+    ).then();
   }
 
-  private encode(message: ClusterMessage) {
+  private encode(message: ClusterMessage | ClusterResponse) {
     const mayContainBinary = [
       MessageType.BROADCAST,
       MessageType.BROADCAST_ACK,
@@ -164,6 +174,7 @@ class ShardedRedisAdapter extends ClusterAdapter {
       MessageType.SERVER_SIDE_EMIT_RESPONSE,
     ].includes(message.type);
 
+    // @ts-ignore
     if (mayContainBinary && hasBinary(message.data)) {
       return encode(message);
     } else {

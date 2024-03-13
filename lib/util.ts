@@ -1,5 +1,3 @@
-import { randomBytes } from "crypto";
-
 export function hasBinary(obj: any, toJSON?: boolean): boolean {
   if (!obj || typeof obj !== "object") {
     return false;
@@ -29,10 +27,6 @@ export function hasBinary(obj: any, toJSON?: boolean): boolean {
   }
 
   return false;
-}
-
-export function randomId() {
-  return randomBytes(8).toString("hex");
 }
 
 export function parseNumSubResponse(res) {
@@ -95,15 +89,18 @@ export function SUNSUBSCRIBE(redisClient: any, channel: string | string[]) {
   }
 }
 
+/**
+ * @see https://redis.io/commands/spublish/
+ */
 export function SPUBLISH(
   redisClient: any,
   channel: string,
   payload: string | Uint8Array
 ) {
   if (isRedisV4Client(redisClient)) {
-    redisClient.sPublish(channel, payload);
+    return redisClient.sPublish(channel, payload);
   } else {
-    redisClient.spublish(channel, payload);
+    return redisClient.spublish(channel, payload);
   }
 }
 
