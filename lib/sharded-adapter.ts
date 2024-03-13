@@ -34,13 +34,17 @@ export interface ShardedRedisAdapterOptions {
    * The default value, useful when some rooms have a low number of clients (so only a few Socket.IO servers are notified).
    *
    * Only public rooms (i.e. not related to a particular Socket ID) are taken in account, because:
-   *
    * - a lot of connected clients would mean a lot of subscription/unsubscription
    * - the Socket ID attribute is ephemeral
    *
+   * - "dynamic-private"
+   *
+   * Like "dynamic" but creates separate channels for private rooms as well. Useful when there is lots of 1:1 communication
+   * via socket.emit() calls.
+   *
    * @default "dynamic"
    */
-  subscriptionMode?: "static" | "dynamic";
+  subscriptionMode?: "static" | "dynamic" | "dynamic-private";
 }
 
 /**
@@ -89,17 +93,18 @@ class ShardedRedisAdapter extends ClusterAdapter {
     SSUBSCRIBE(this.subClient, this.channel, handler);
     SSUBSCRIBE(this.subClient, this.responseChannel, handler);
 
-    if (this.opts.subscriptionMode === "dynamic") {
+    if (
+      this.opts.subscriptionMode === "dynamic" ||
+      this.opts.subscriptionMode === "dynamic-private"
+    ) {
       this.on("create-room", (room) => {
-        const isPublicRoom = !this.sids.has(room);
-        if (isPublicRoom) {
+        if (this.shouldUseASeparateNamespace(room)) {
           SSUBSCRIBE(this.subClient, this.dynamicChannel(room), handler);
         }
       });
 
       this.on("delete-room", (room) => {
-        const isPublicRoom = !this.sids.has(room);
-        if (isPublicRoom) {
+        if (this.shouldUseASeparateNamespace(room)) {
           SUNSUBSCRIBE(this.subClient, this.dynamicChannel(room));
         }
       });
@@ -109,10 +114,12 @@ class ShardedRedisAdapter extends ClusterAdapter {
   override close(): Promise<void> | void {
     const channels = [this.channel, this.responseChannel];
 
-    if (this.opts.subscriptionMode === "dynamic") {
+    if (
+      this.opts.subscriptionMode === "dynamic" ||
+      this.opts.subscriptionMode === "dynamic-private"
+    ) {
       this.rooms.forEach((_sids, room) => {
-        const isPublicRoom = !this.sids.has(room);
-        if (isPublicRoom) {
+        if (this.shouldUseASeparateNamespace(room)) {
           channels.push(this.dynamicChannel(room));
         }
       });
@@ -136,11 +143,13 @@ class ShardedRedisAdapter extends ClusterAdapter {
     // broadcast with ack can not use a dynamic channel, because the serverCount() method return the number of all
     // servers, not only the ones where the given room exists
     const useDynamicChannel =
-      this.opts.subscriptionMode === "dynamic" &&
       message.type === MessageType.BROADCAST &&
       message.data.requestId === undefined &&
       message.data.opts.rooms.length === 1 &&
-      !looksLikeASocketId(message.data.opts.rooms[0]);
+      ((this.opts.subscriptionMode === "dynamic" &&
+        !looksLikeASocketId(message.data.opts.rooms[0])) ||
+        this.opts.subscriptionMode === "dynamic-private");
+
     if (useDynamicChannel) {
       return this.dynamicChannel(message.data.opts.rooms[0]);
     } else {
@@ -203,5 +212,14 @@ class ShardedRedisAdapter extends ClusterAdapter {
 
   override serverCount(): Promise<number> {
     return PUBSUB(this.pubClient, "SHARDNUMSUB", this.channel);
+  }
+
+  private shouldUseASeparateNamespace(room: string): boolean {
+    const isPublicRoom = !this.sids.has(room);
+
+    return (
+      (this.opts.subscriptionMode === "dynamic" && isPublicRoom) ||
+      this.opts.subscriptionMode === "dynamic-private"
+    );
   }
 }

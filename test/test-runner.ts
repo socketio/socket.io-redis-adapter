@@ -175,6 +175,28 @@ describe("@socket.io/redis-adapter", () => {
       true
     ));
 
+  describe("[sharded] redis@4 standalone (dynamic subscription mode & dynamic private channels)", () =>
+    testSuite(
+      async () => {
+        const pubClient = createClient();
+        const subClient = pubClient.duplicate();
+
+        await Promise.all([pubClient.connect(), subClient.connect()]);
+
+        return [
+          createShardedAdapter(pubClient, subClient, {
+            subscriptionMode: "dynamic-private",
+          }),
+          () => {
+            pubClient.disconnect();
+            subClient.disconnect();
+          },
+        ];
+      },
+      "redis@4",
+      true
+    ));
+
   describe("[sharded] redis@4 standalone (static subscription mode)", () =>
     testSuite(
       async () => {
