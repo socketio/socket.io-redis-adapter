@@ -5,6 +5,10 @@ import debugModule from "debug";
 
 const debug = debugModule("socket.io-redis");
 
+function looksLikeASocketId(room: any) {
+  return typeof room === "string" && room.length === 20;
+}
+
 export interface ShardedRedisAdapterOptions {
   /**
    * The prefix for the Redis Pub/Sub channels.
@@ -128,7 +132,8 @@ class ShardedRedisAdapter extends ClusterAdapter {
       this.opts.subscriptionMode === "dynamic" &&
       message.type === MessageType.BROADCAST &&
       message.data.requestId === undefined &&
-      message.data.opts.rooms.length === 1;
+      message.data.opts.rooms.length === 1 &&
+      !looksLikeASocketId(message.data.opts.rooms[0]);
     if (useDynamicChannel) {
       return this.dynamicChannel(message.data.opts.rooms[0]);
     } else {
