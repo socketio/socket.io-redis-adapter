@@ -1,138 +1,172 @@
-# socket.io-redis
+# Socket.IO Redis adapter
 
-[![Build Status](https://github.com/socketio/socket.io-redis/workflows/CI/badge.svg?branch=main)](https://github.com/socketio/socket.io-redis/actions)
-[![npm version](https://badge.fury.io/js/%40socket.io%2Fredis-adapter.svg)](https://badge.fury.io/js/%40socket.io%2Fredis-adapter)
+The `@socket.io/redis-adapter` package allows broadcasting packets between multiple Socket.IO servers.
 
-## Table of contents
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="./assets/adapter_dark.png">
+  <img alt="Diagram of Socket.IO packets forwarded through Redis" src="./assets/adapter.png">
+</picture>
 
-- [How to use](#how-to-use)
-  - [CommonJS](#commonjs)
-  - [ES6 module](#es6-modules)
-  - [TypeScript](#typescript)
-  - [Sharded Redis Pub/Sub](#sharded-redis-pubsub)
+**Table of contents**
+
+- [Supported features](#supported-features)
+- [Installation](#installation)
 - [Compatibility table](#compatibility-table)
-- [How does it work under the hood?](#how-does-it-work-under-the-hood)
-- [API](#api)
-  - [adapter(pubClient, subClient[, opts])](#adapterpubclient-subclient-opts)
-  - [RedisAdapter](#redisadapter)
-    - [RedisAdapter#allRooms()](#redisadapterallrooms)
-- [With ioredis client](#with-ioredis-client)
-  - [Cluster example](#cluster-example)
-  - [Sentinel Example](#sentinel-example)
-- [Protocol](#protocol)
-- [Migrating from `socket.io-redis`](#migrating-from-socketio-redis)
+- [Usage](#usage)
+  - [With the `redis` package](#with-the-redis-package)
+  - [With the `redis` package and a Redis cluster](#with-the-redis-package-and-a-redis-cluster)
+  - [With the `ioredis` package](#with-the-ioredis-package)
+  - [With the `ioredis` package and a Redis cluster](#with-the-ioredis-package-and-a-redis-cluster)
+  - [With Redis sharded Pub/Sub](#with-redis-sharded-pubsub)
+- [Options](#options)
+  - [Default adapter](#default-adapter)
+  - [Sharded adapter](#sharded-adapter)
 - [License](#license)
 
-## How to use
+## Supported features
 
-Installation:
+| Feature                         | `socket.io` version | Support                                        |
+|---------------------------------|---------------------|------------------------------------------------|
+| Socket management               | `4.0.0`             | :white_check_mark: YES (since version `6.1.0`) |
+| Inter-server communication      | `4.1.0`             | :white_check_mark: YES (since version `7.0.0`) |
+| Broadcast with acknowledgements | `4.5.0`             | :white_check_mark: YES (since version `7.2.0`) |
+| Connection state recovery       | `4.6.0`             | :x: NO                                         |
+
+## Installation
 
 ```
-$ npm install @socket.io/redis-adapter redis
+npm install @socket.io/redis-adapter
 ```
 
-### CommonJS
+## Compatibility table
+
+| Redis Adapter version | Socket.IO server version |
+|-----------------------|--------------------------|
+| 4.x                   | 1.x                      |
+| 5.x                   | 2.x                      |
+| 6.0.x                 | 3.x                      |
+| 6.1.x                 | 4.x                      |
+| 7.x and above         | 4.3.1 and above          |
+
+## Usage
+
+### With the `redis` package
 
 ```js
-const { Server } = require('socket.io');
-const { createClient } = require('redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
+import { createClient } from "redis";
+import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 
-const io = new Server();
-const pubClient = createClient({ host: 'localhost', port: 6379 });
+const pubClient = createClient({ url: "redis://localhost:6379" });
 const subClient = pubClient.duplicate();
 
-Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-  io.adapter(createAdapter(pubClient, subClient));
-  io.listen(3000);
+await Promise.all([
+  pubClient.connect(),
+  subClient.connect()
+]);
+
+const io = new Server({
+  adapter: createAdapter(pubClient, subClient)
 });
-```
-
-With `redis@3`, calling `connect()` on the Redis clients is not needed:
-
-```js
-const { Server } = require('socket.io');
-const { createClient } = require('redis');
-const { createAdapter } = require('@socket.io/redis-adapter');
-
-const io = new Server();
-const pubClient = createClient({ host: 'localhost', port: 6379 });
-const subClient = pubClient.duplicate();
-
-io.adapter(createAdapter(pubClient, subClient));
 
 io.listen(3000);
 ```
 
-### ES6 modules
+### With the `redis` package and a Redis cluster
 
 ```js
-import { Server } from 'socket.io';
-import { createClient } from 'redis';
-import { createAdapter } from '@socket.io/redis-adapter';
+import { createCluster } from "redis";
+import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 
-const io = new Server();
-const pubClient = createClient({ host: 'localhost', port: 6379 });
+const pubClient = createCluster({
+  rootNodes: [
+    {
+      url: "redis://localhost:7000",
+    },
+    {
+      url: "redis://localhost:7001",
+    },
+    {
+      url: "redis://localhost:7002",
+    },
+  ],
+});
 const subClient = pubClient.duplicate();
 
-Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-  io.adapter(createAdapter(pubClient, subClient));
-  io.listen(3000);
+await Promise.all([
+  pubClient.connect(),
+  subClient.connect()
+]);
+
+const io = new Server({
+  adapter: createAdapter(pubClient, subClient)
 });
+
+io.listen(3000);
 ```
 
-### TypeScript
-
-```ts
-import { Server } from 'socket.io';
-import { createClient } from 'redis';
-import { createAdapter } from '@socket.io/redis-adapter';
-
-const io = new Server();
-const pubClient = createClient({ host: 'localhost', port: 6379 });
-const subClient = pubClient.duplicate();
-
-Promise.all([pubClient.connect(), subClient.connect()]).then(() => {
-  io.adapter(createAdapter(pubClient, subClient));
-  io.listen(3000);
-});
-```
-
-By running Socket.IO with the `@socket.io/redis-adapter` adapter you can run
-multiple Socket.IO instances in different processes or servers that can
-all broadcast and emit events to and from each other.
-
-So any of the following commands:
+### With the `ioredis` package
 
 ```js
-io.emit('hello', 'to all clients');
-io.to('room42').emit('hello', "to all clients in 'room42' room");
+import { Redis } from "ioredis";
+import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 
-io.on('connection', (socket) => {
-  socket.broadcast.emit('hello', 'to all clients except sender');
-  socket.to('room42').emit('hello', "to all clients in 'room42' room except sender");
+const pubClient = new Redis();
+const subClient = pubClient.duplicate();
+
+const io = new Server({
+  adapter: createAdapter(pubClient, subClient)
 });
+
+io.listen(3000);
 ```
 
-will properly be broadcast to the clients through the Redis [Pub/Sub mechanism](https://redis.io/topics/pubsub).
+### With the `ioredis` package and a Redis cluster
 
-If you need to emit events to socket.io instances from a non-socket.io
-process, you should use [socket.io-emitter](https://github.com/socketio/socket.io-emitter).
+```js
+import { Cluster } from "ioredis";
+import { Server } from "socket.io";
+import { createAdapter } from "@socket.io/redis-adapter";
 
-### Sharded Redis Pub/Sub
+const pubClient = new Cluster([
+  {
+    host: "localhost",
+    port: 7000,
+  },
+  {
+    host: "localhost",
+    port: 7001,
+  },
+  {
+    host: "localhost",
+    port: 7002,
+  },
+]);
+const subClient = pubClient.duplicate();
+
+const io = new Server({
+  adapter: createAdapter(pubClient, subClient)
+});
+
+io.listen(3000);
+```
+
+### With Redis sharded Pub/Sub
 
 Sharded Pub/Sub was introduced in Redis 7.0 in order to help scaling the usage of Pub/Sub in cluster mode.
 
-Reference: https://redis.io/docs/manual/pubsub/#sharded-pubsub
+Reference: https://redis.io/docs/interact/pubsub/#sharded-pubsub
 
 A dedicated adapter can be created with the `createShardedAdapter()` method:
 
 ```js
-import { Server } from 'socket.io';
-import { createClient } from 'redis';
-import { createShardedAdapter } from '@socket.io/redis-adapter';
+import { Server } from "socket.io";
+import { createClient } from "redis";
+import { createShardedAdapter } from "@socket.io/redis-adapter";
 
-const pubClient = createClient({ host: 'localhost', port: 6379 });
+const pubClient = createClient({ host: "localhost", port: 6379 });
 const subClient = pubClient.duplicate();
 
 await Promise.all([
@@ -152,201 +186,26 @@ Minimum requirements:
 - Redis 7.0
 - [`redis@4.6.0`](https://github.com/redis/node-redis/commit/3b1bad229674b421b2bc6424155b20d4d3e45bd1)
 
+Note: it is not currently possible to use the sharded adapter with the `ioredis` package and a Redis cluster ([reference](https://github.com/luin/ioredis/issues/1759)).
 
-## Compatibility table
+## Options
 
-| Redis Adapter version | Socket.IO server version |
-|-----------------------| ------------------------ |
-| 4.x                   | 1.x                      |
-| 5.x                   | 2.x                      |
-| 6.0.x                 | 3.x                      |
-| 6.1.x                 | 4.x                      |
-| 7.x and above         | 4.3.1 and above          |
+### Default adapter
 
-## How does it work under the hood?
+| Name                               | Description                                                                   | Default value |
+|------------------------------------|-------------------------------------------------------------------------------|---------------|
+| `key`                              | The prefix for the Redis Pub/Sub channels.                                    | `socket.io`   |
+| `requestsTimeout`                  | After this timeout the adapter will stop waiting from responses to request.   | `5_000`       |
+| `publishOnSpecificResponseChannel` | Whether to publish a response to the channel specific to the requesting node. | `false`       |
+| `parser`                           | The parser to use for encoding and decoding messages sent to Redis.           | `-`           |
 
-This adapter extends the [in-memory adapter](https://github.com/socketio/socket.io-adapter/) that is included by default with the Socket.IO server.
+### Sharded adapter
 
-The in-memory adapter stores the relationships between Sockets and Rooms in two Maps.
-
-When you run `socket.join("room21")`, here's what happens:
-
-```
-console.log(adapter.rooms); // Map { "room21" => Set { "mdpk4kxF5CmhwfCdAHD8" } }
-console.log(adapter.sids); // Map { "mdpk4kxF5CmhwfCdAHD8" => Set { "mdpk4kxF5CmhwfCdAHD8", "room21" } }
-// "mdpk4kxF5CmhwfCdAHD8" being the ID of the given socket
-```
-
-Those two Maps are then used when broadcasting:
-
-- a broadcast to all sockets (`io.emit()`) loops through the `sids` Map, and send the packet to all sockets
-- a broadcast to a given room (`io.to("room21").emit()`) loops through the Set in the `rooms` Map, and sends the packet to all matching sockets
-
-The Redis adapter extends the broadcast function of the in-memory adapter: the packet is also [published](https://redis.io/topics/pubsub) to a Redis channel (see [below](#protocol) for the format of the channel name).
-
-Each Socket.IO server receives this packet and broadcasts it to its own list of connected sockets.
-
-To check what's happening on your Redis instance:
-
-```
-$ redis-cli
-127.0.0.1:6379> PSUBSCRIBE *
-Reading messages... (press Ctrl-C to quit)
-1) "psubscribe"
-2) "*"
-3) (integer) 1
-
-1) "pmessage"
-2) "*"
-3) "socket.io#/#" (a broadcast to all sockets or to a list of rooms)
-4) <the packet content>
-
-1) "pmessage"
-2) "*"
-3) "socket.io#/#room21#" (a broadcast to a single room)
-4) <the packet content>
-```
-
-Note: **no data** is stored in Redis itself
-
-There are 3 Redis subscriptions per namespace:
-
-- main channel: `<prefix>#<namespace>#*` (glob)
-- request channel: `<prefix>-request#<namespace>#`
-- response channel: `<prefix>-response#<namespace>#`
-
-The request and response channels are used in the additional methods exposed by the Redis adapter, like [RedisAdapter#allRooms()](#redisadapterallrooms).
-
-
-## API
-
-### adapter(pubClient, subClient[, opts])
-
-The following options are allowed:
-
-- `key`: the name of the key to pub/sub events on as prefix (`socket.io`)
-- `requestsTimeout`: optional, after this timeout the adapter will stop waiting from responses to request (`5000ms`)
-- `parser`: optional, parser to use for encoding and decoding messages passed through Redis ([`notepack.io`](https://www.npmjs.com/package/notepack.io))
-
-### RedisAdapter
-
-The redis adapter instances expose the following properties
-that a regular `Adapter` does not
-
-- `uid`
-- `prefix`
-- `pubClient`
-- `subClient`
-- `requestsTimeout`
-- `parser`
-
-### RedisAdapter#allRooms()
-
-Returns the list of all rooms.
-
-```js
-const rooms = await io.of('/').adapter.allRooms();
-console.log(rooms); // a Set containing all rooms (across every node)
-```
-
-## With ioredis client
-
-### Cluster example
-
-```js
-const io = require('socket.io')(3000);
-const redisAdapter = require('@socket.io/redis-adapter');
-const Redis = require('ioredis');
-
-const startupNodes = [
-  {
-    port: 6380,
-    host: '127.0.0.1'
-  },
-  {
-    port: 6381,
-    host: '127.0.0.1'
-  }
-];
-
-const pubClient = new Redis.Cluster(startupNodes);
-const subClient = pubClient.duplicate();
-
-io.adapter(redisAdapter(pubClient, subClient));
-```
-
-### Sentinel Example
-
-```js
-const io = require('socket.io')(3000);
-const redisAdapter = require('@socket.io/redis-adapter');
-const Redis = require('ioredis');
-
-const options = {
-  sentinels: [
-    { host: 'somehost1', port: 26379 },
-    { host: 'somehost2', port: 26379 }
-  ],
-  name: 'master01'
-};
-
-const pubClient = new Redis(options);
-const subClient = pubClient.duplicate();
-
-io.adapter(redisAdapter(pubClient, subClient));
-```
-
-## Protocol
-
-The `@socket.io/redis-adapter` adapter broadcasts and receives messages on particularly named Redis channels. For global broadcasts the channel name is:
-```
-prefix + '#' + namespace + '#'
-```
-
-In broadcasting to a single room the channel name is:
-```
-prefix + '#' + namespace + '#' + room + '#'
-```
-
-
-- `prefix`: The base channel name. Default value is `socket.io`. Changed by setting `opts.key` in `adapter(opts)` constructor
-- `namespace`: See https://github.com/socketio/socket.io#namespace.
-- `room` : Used if targeting a specific room.
-
-A number of other libraries adopt this protocol including:
-
-- [socket.io-redis-emitter](https://github.com/socketio/socket.io-redis-emitter)
-- [socket.io-python-emitter](https://github.com/GameXG/socket.io-python-emitter)
-- [socket.io-emitter-go](https://github.com/stackcats/socket.io-emitter-go)
-
-## Migrating from `socket.io-redis`
-
-The package was renamed from `socket.io-redis` to `@socket.io/redis-adapter` in [v7](https://github.com/socketio/socket.io-redis-adapter/releases/tag/7.0.0), in order to match the name of the Redis emitter (`@socket.io/redis-emitter`).
-
-To migrate to the new package, you'll need to make sure to provide your own Redis clients, as the package will no longer create Redis clients on behalf of the user.
-
-Before:
-
-```js
-const redisAdapter = require("socket.io-redis");
-
-io.adapter(redisAdapter({ host: "localhost", port: 6379 }));
-```
-
-After:
-
-```js
-const { createClient } = require("redis");
-const { createAdapter } = require("@socket.io/redis-adapter");
-
-const pubClient = createClient({ host: "localhost", port: 6379 });
-const subClient = pubClient.duplicate();
-
-io.adapter(createAdapter(pubClient, subClient));
-```
-
-Please note that the communication protocol between the Socket.IO servers has not been updated, so you can have some servers with `socket.io-redis` and some others with `@socket.io/redis-adapter` at the same time.
+| Name               | Description                                                                             | Default value |
+|--------------------|-----------------------------------------------------------------------------------------|---------------|
+| `channelPrefix`    | The prefix for the Redis Pub/Sub channels.                                              | `socket.io`   |
+| `subscriptionMode` | The subscription mode impacts the number of Redis Pub/Sub channels used by the adapter. | `dynamic`     |
 
 ## License
 
-MIT
+[MIT](LICENSE)
