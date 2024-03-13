@@ -1,5 +1,6 @@
 # History
 
+- [8.3.0](830-2024-03-13) (Mar 2024)
 - [8.2.1](821-2023-05-14) (May 2023)
 - [8.2.0](820-2023-05-02) (May 2023)
 - [8.1.0](810-2023-02-08) (Feb 2023)
@@ -20,6 +21,22 @@
 
 
 # Release notes
+
+## [8.3.0](https://github.com/socketio/socket.io-redis-adapter/compare/8.2.1...8.3.0) (2024-03-13)
+
+
+### Bug Fixes
+
+* **sharded:** allow to target a specific socket ID in dynamic mode ([#525](https://github.com/socketio/socket.io-redis-adapter/issues/525)) ([cca38dc](https://github.com/socketio/socket.io-redis-adapter/commit/cca38dc24d0b5dd797c440b58795314cbeaf89f0))
+* **sharded:** fix count in fetchSockets() method ([#523](https://github.com/socketio/socket.io-redis-adapter/issues/523)) ([bd32763](https://github.com/socketio/socket.io-redis-adapter/commit/bd32763043a2eb79a21dffd8820f20e598348adf))
+* **sharded:** fix SSUBSCRIBE memory leak with ioredis ([#529](https://github.com/socketio/socket.io-redis-adapter/issues/529)) ([2113e8d](https://github.com/socketio/socket.io-redis-adapter/commit/2113e8d9eff9e13f9bbd9b603b93f42de512eb44))
+
+
+### Features
+
+* **sharded:** add an option for dynamic private channels ([#526](https://github.com/socketio/socket.io-redis-adapter/issues/526)) ([50220f4](https://github.com/socketio/socket.io-redis-adapter/commit/50220f49cd73047e9f70afcb18c9ac62c716bd3d))
+
+
 
 ## [8.2.1](https://github.com/socketio/socket.io-redis-adapter/compare/8.2.0...8.2.1) (2023-05-14)
 
