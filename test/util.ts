@@ -63,14 +63,8 @@ export function setup(createAdapter: any) {
               serverSockets,
               clientSockets,
               cleanup: () => {
-                servers.forEach((server) => {
-                  // @ts-ignore
-                  server.httpServer.close();
-                  server.of("/").adapter.close();
-                });
-                clientSockets.forEach((socket) => {
-                  socket.disconnect();
-                });
+                servers.forEach((server) => server.close());
+                clientSockets.forEach((socket) => socket.disconnect());
                 redisCleanupFunctions.forEach((fn) => fn());
               },
             });
