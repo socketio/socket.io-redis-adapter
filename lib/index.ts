@@ -526,7 +526,7 @@ export class RedisAdapter extends Adapter {
 
     if (
       !requestId ||
-      !(this.requests.has(requestId) || this.ackRequests.has(requestId))
+      !this.requests.has(requestId)
     ) {
       debug("ignoring unknown request");
       return;
