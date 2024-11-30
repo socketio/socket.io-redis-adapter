@@ -59,8 +59,8 @@ export interface RedisAdapterOptions {
   /**
    * Whether to publish a response to the channel specific to the requesting node.
    *
-   * - if true, the response will be published to `${key}-request#${nsp}#${uid}#`
-   * - if false, the response will be published to `${key}-request#${nsp}#`
+   * - if true, the response will be published to `${key}-response#${nsp}#${uid}#`
+   * - if false, the response will be published to `${key}-response#${nsp}#`
    *
    * This option currently defaults to false for backward compatibility, but will be set to true in the next major
    * release.
