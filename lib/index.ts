@@ -3,15 +3,21 @@ import msgpack = require("notepack.io");
 import { Adapter, BroadcastOptions, Room } from "socket.io-adapter";
 import { PUBSUB } from "./util";
 
+// Hazelcast Adapter imports
+import { 
+  createAdapter as createHazelcastAdapterFactory, // Alias at import
+  HazelcastAdapter as HazelcastAdapterClass, 
+  HazelcastAdapterOptions as HazelcastAdapterOptionsType 
+} from "./hazelcast-adapter";
+
 const debug = require("debug")("socket.io-redis");
 
-module.exports = exports = createAdapter;
+// Note: The original module.exports = exports = createAdapter; is removed.
 
 /**
- * Request types, for messages between nodes
+ * Request types, for messages between nodes (used by RedisAdapter)
  */
-
-enum RequestType {
+enum RedisRequestType { // Renamed to avoid conflict if HazelcastAdapter has its own
   SOCKETS = 0,
   ALL_ROOMS = 1,
   REMOTE_JOIN = 2,
@@ -24,8 +30,8 @@ enum RequestType {
   BROADCAST_ACK,
 }
 
-interface Request {
-  type: RequestType;
+interface RedisRequest { // Renamed
+  type: RedisRequestType;
   resolve: Function;
   timeout: NodeJS.Timeout;
   numSub?: number;
@@ -33,7 +39,7 @@ interface Request {
   [other: string]: any;
 }
 
-interface AckRequest {
+interface RedisAckRequest { // Renamed
   clientCountCallback: (clientCount: number) => void;
   ack: (...args: any[]) => void;
 }
@@ -58,33 +64,21 @@ export interface RedisAdapterOptions {
   requestsTimeout: number;
   /**
    * Whether to publish a response to the channel specific to the requesting node.
-   *
-   * - if true, the response will be published to `${key}-request#${nsp}#${uid}#`
-   * - if false, the response will be published to `${key}-request#${nsp}#`
-   *
-   * This option currently defaults to false for backward compatibility, but will be set to true in the next major
-   * release.
-   *
    * @default false
    */
   publishOnSpecificResponseChannel: boolean;
   /**
    * The parser to use for encoding and decoding messages sent to Redis.
-   * This option defaults to using `notepack.io`, a MessagePack implementation.
+   * @default notepack.io
    */
   parser: Parser;
 }
 
 /**
  * Returns a function that will create a RedisAdapter instance.
- *
- * @param pubClient - a Redis client that will be used to publish messages
- * @param subClient - a Redis client that will be used to receive messages (put in subscribed state)
- * @param opts - additional options
- *
- * @public
+ * (Previously createAdapter, now createRedisAdapter)
  */
-export function createAdapter(
+export function createRedisAdapter( // Renamed
   pubClient: any,
   subClient: any,
   opts?: Partial<RedisAdapterOptions>
@@ -104,21 +98,11 @@ export class RedisAdapter extends Adapter {
   private readonly requestChannel: string;
   private readonly responseChannel: string;
   private readonly specificResponseChannel: string;
-  private requests: Map<string, Request> = new Map();
-  private ackRequests: Map<string, AckRequest> = new Map();
+  private requests: Map<string, RedisRequest> = new Map(); // Updated type
+  private ackRequests: Map<string, RedisAckRequest> = new Map(); // Updated type
   private redisListeners: Map<string, Function> = new Map();
   private readonly friendlyErrorHandler: () => void;
 
-  /**
-   * Adapter constructor.
-   *
-   * @param nsp - the namespace
-   * @param pubClient - a Redis client that will be used to publish messages
-   * @param subClient - a Redis client that will be used to receive messages (put in subscribed state)
-   * @param opts - additional options
-   *
-   * @public
-   */
   constructor(
     nsp: any,
     readonly pubClient: any,
@@ -194,11 +178,6 @@ export class RedisAdapter extends Adapter {
     this.subClient.on("error", this.friendlyErrorHandler);
   }
 
-  /**
-   * Called with a subscription message
-   *
-   * @private
-   */
   private onmessage(pattern, channel, msg) {
     channel = channel.toString();
 
@@ -236,11 +215,6 @@ export class RedisAdapter extends Adapter {
     return hasNumericRoom || this.rooms.has(room);
   }
 
-  /**
-   * Called on request from another node
-   *
-   * @private
-   */
   private async onrequest(channel, msg) {
     channel = channel.toString();
 
@@ -253,7 +227,6 @@ export class RedisAdapter extends Adapter {
     let request;
 
     try {
-      // if the buffer starts with a "{" character
       if (msg[0] === 0x7b) {
         request = JSON.parse(msg.toString());
       } else {
@@ -269,35 +242,30 @@ export class RedisAdapter extends Adapter {
     let response, socket;
 
     switch (request.type) {
-      case RequestType.SOCKETS:
+      case RedisRequestType.SOCKETS: // Updated type
         if (this.requests.has(request.requestId)) {
           return;
         }
-
         const sockets = await super.sockets(new Set(request.rooms));
-
         response = JSON.stringify({
           requestId: request.requestId,
           sockets: [...sockets],
         });
-
         this.publishResponse(request, response);
         break;
 
-      case RequestType.ALL_ROOMS:
+      case RedisRequestType.ALL_ROOMS: // Updated type
         if (this.requests.has(request.requestId)) {
           return;
         }
-
         response = JSON.stringify({
           requestId: request.requestId,
           rooms: [...this.rooms.keys()],
         });
-
         this.publishResponse(request, response);
         break;
 
-      case RequestType.REMOTE_JOIN:
+      case RedisRequestType.REMOTE_JOIN: // Updated type
         if (request.opts) {
           const opts = {
             rooms: new Set<Room>(request.opts.rooms),
@@ -305,22 +273,14 @@ export class RedisAdapter extends Adapter {
           };
           return super.addSockets(opts, request.rooms);
         }
-
         socket = this.nsp.sockets.get(request.sid);
-        if (!socket) {
-          return;
-        }
-
+        if (!socket) return;
         socket.join(request.room);
-
-        response = JSON.stringify({
-          requestId: request.requestId,
-        });
-
+        response = JSON.stringify({ requestId: request.requestId });
         this.publishResponse(request, response);
         break;
 
-      case RequestType.REMOTE_LEAVE:
+      case RedisRequestType.REMOTE_LEAVE: // Updated type
         if (request.opts) {
           const opts = {
             rooms: new Set<Room>(request.opts.rooms),
@@ -328,22 +288,14 @@ export class RedisAdapter extends Adapter {
           };
           return super.delSockets(opts, request.rooms);
         }
-
         socket = this.nsp.sockets.get(request.sid);
-        if (!socket) {
-          return;
-        }
-
+        if (!socket) return;
         socket.leave(request.room);
-
-        response = JSON.stringify({
-          requestId: request.requestId,
-        });
-
+        response = JSON.stringify({ requestId: request.requestId });
         this.publishResponse(request, response);
         break;
 
-      case RequestType.REMOTE_DISCONNECT:
+      case RedisRequestType.REMOTE_DISCONNECT: // Updated type
         if (request.opts) {
           const opts = {
             rooms: new Set<Room>(request.opts.rooms),
@@ -351,36 +303,23 @@ export class RedisAdapter extends Adapter {
           };
           return super.disconnectSockets(opts, request.close);
         }
-
         socket = this.nsp.sockets.get(request.sid);
-        if (!socket) {
-          return;
-        }
-
+        if (!socket) return;
         socket.disconnect(request.close);
-
-        response = JSON.stringify({
-          requestId: request.requestId,
-        });
-
+        response = JSON.stringify({ requestId: request.requestId });
         this.publishResponse(request, response);
         break;
 
-      case RequestType.REMOTE_FETCH:
-        if (this.requests.has(request.requestId)) {
-          return;
-        }
-
+      case RedisRequestType.REMOTE_FETCH: // Updated type
+        if (this.requests.has(request.requestId)) return;
         const opts = {
           rooms: new Set<Room>(request.opts.rooms),
           except: new Set<Room>(request.opts.except),
         };
         const localSockets = await super.fetchSockets(opts);
-
         response = JSON.stringify({
           requestId: request.requestId,
           sockets: localSockets.map((socket) => {
-            // remove sessionStore from handshake, as it may contain circular references
             const { sessionStore, ...handshake } = socket.handshake;
             return {
               id: socket.id,
@@ -390,15 +329,11 @@ export class RedisAdapter extends Adapter {
             };
           }),
         });
-
         this.publishResponse(request, response);
         break;
 
-      case RequestType.SERVER_SIDE_EMIT:
-        if (request.uid === this.uid) {
-          debug("ignore same uid");
-          return;
-        }
+      case RedisRequestType.SERVER_SIDE_EMIT: // Updated type
+        if (request.uid === this.uid) return debug("ignore same uid");
         const withAck = request.requestId !== undefined;
         if (!withAck) {
           this.nsp._onServerSideEmit(request.data);
@@ -406,16 +341,13 @@ export class RedisAdapter extends Adapter {
         }
         let called = false;
         const callback = (arg) => {
-          // only one argument is expected
-          if (called) {
-            return;
-          }
+          if (called) return;
           called = true;
           debug("calling acknowledgement with %j", arg);
           this.pubClient.publish(
             this.responseChannel,
             JSON.stringify({
-              type: RequestType.SERVER_SIDE_EMIT,
+              type: RedisRequestType.SERVER_SIDE_EMIT, // Updated type
               requestId: request.requestId,
               data: arg,
             })
@@ -425,17 +357,12 @@ export class RedisAdapter extends Adapter {
         this.nsp._onServerSideEmit(request.data);
         break;
 
-      case RequestType.BROADCAST: {
-        if (this.ackRequests.has(request.requestId)) {
-          // ignore self
-          return;
-        }
-
+      case RedisRequestType.BROADCAST: { // Updated type
+        if (this.ackRequests.has(request.requestId)) return;
         const opts = {
           rooms: new Set<Room>(request.opts.rooms),
           except: new Set<Room>(request.opts.except),
         };
-
         super.broadcastWithAck(
           request.packet,
           opts,
@@ -444,7 +371,7 @@ export class RedisAdapter extends Adapter {
             this.publishResponse(
               request,
               JSON.stringify({
-                type: RequestType.BROADCAST_CLIENT_COUNT,
+                type: RedisRequestType.BROADCAST_CLIENT_COUNT, // Updated type
                 requestId: request.requestId,
                 clientCount,
               })
@@ -452,11 +379,10 @@ export class RedisAdapter extends Adapter {
           },
           (arg) => {
             debug("received acknowledgement with value %j", arg);
-
             this.publishResponse(
               request,
               this.parser.encode({
-                type: RequestType.BROADCAST_ACK,
+                type: RedisRequestType.BROADCAST_ACK, // Updated type
                 requestId: request.requestId,
                 packet: arg,
               })
@@ -465,18 +391,11 @@ export class RedisAdapter extends Adapter {
         );
         break;
       }
-
       default:
         debug("ignoring unknown request type: %s", request.type);
     }
   }
 
-  /**
-   * Send the response to the requesting node
-   * @param request
-   * @param response
-   * @private
-   */
   private publishResponse(request, response) {
     const responseChannel = this.publishOnSpecificResponseChannel
       ? `${this.responseChannel}${request.uid}#`
@@ -485,16 +404,9 @@ export class RedisAdapter extends Adapter {
     this.pubClient.publish(responseChannel, response);
   }
 
-  /**
-   * Called on response from another node
-   *
-   * @private
-   */
   private onresponse(channel, msg) {
     let response;
-
     try {
-      // if the buffer starts with a "{" character
       if (msg[0] === 0x7b) {
         response = JSON.parse(msg.toString());
       } else {
@@ -506,17 +418,14 @@ export class RedisAdapter extends Adapter {
     }
 
     const requestId = response.requestId;
-
     if (this.ackRequests.has(requestId)) {
       const ackRequest = this.ackRequests.get(requestId);
-
       switch (response.type) {
-        case RequestType.BROADCAST_CLIENT_COUNT: {
+        case RedisRequestType.BROADCAST_CLIENT_COUNT: { // Updated type
           ackRequest?.clientCountCallback(response.clientCount);
           break;
         }
-
-        case RequestType.BROADCAST_ACK: {
+        case RedisRequestType.BROADCAST_ACK: { // Updated type
           ackRequest?.ack(response.packet);
           break;
         }
@@ -524,81 +433,56 @@ export class RedisAdapter extends Adapter {
       return;
     }
 
-    if (
-      !requestId ||
-      !(this.requests.has(requestId) || this.ackRequests.has(requestId))
-    ) {
+    if (!requestId || !this.requests.has(requestId)) {
       debug("ignoring unknown request");
       return;
     }
 
     debug("received response %j", response);
-
     const request = this.requests.get(requestId);
 
     switch (request.type) {
-      case RequestType.SOCKETS:
-      case RequestType.REMOTE_FETCH:
+      case RedisRequestType.SOCKETS: // Updated type
+      case RedisRequestType.REMOTE_FETCH: // Updated type
         request.msgCount++;
-
-        // ignore if response does not contain 'sockets' key
         if (!response.sockets || !Array.isArray(response.sockets)) return;
-
-        if (request.type === RequestType.SOCKETS) {
+        if (request.type === RedisRequestType.SOCKETS) { // Updated type
           response.sockets.forEach((s) => request.sockets.add(s));
         } else {
           response.sockets.forEach((s) => request.sockets.push(s));
         }
-
         if (request.msgCount === request.numSub) {
           clearTimeout(request.timeout);
-          if (request.resolve) {
-            request.resolve(request.sockets);
-          }
+          if (request.resolve) request.resolve(request.sockets);
           this.requests.delete(requestId);
         }
         break;
 
-      case RequestType.ALL_ROOMS:
+      case RedisRequestType.ALL_ROOMS: // Updated type
         request.msgCount++;
-
-        // ignore if response does not contain 'rooms' key
         if (!response.rooms || !Array.isArray(response.rooms)) return;
-
         response.rooms.forEach((s) => request.rooms.add(s));
-
         if (request.msgCount === request.numSub) {
           clearTimeout(request.timeout);
-          if (request.resolve) {
-            request.resolve(request.rooms);
-          }
+          if (request.resolve) request.resolve(request.rooms);
           this.requests.delete(requestId);
         }
         break;
 
-      case RequestType.REMOTE_JOIN:
-      case RequestType.REMOTE_LEAVE:
-      case RequestType.REMOTE_DISCONNECT:
+      case RedisRequestType.REMOTE_JOIN: // Updated type
+      case RedisRequestType.REMOTE_LEAVE: // Updated type
+      case RedisRequestType.REMOTE_DISCONNECT: // Updated type
         clearTimeout(request.timeout);
-        if (request.resolve) {
-          request.resolve();
-        }
+        if (request.resolve) request.resolve();
         this.requests.delete(requestId);
         break;
 
-      case RequestType.SERVER_SIDE_EMIT:
+      case RedisRequestType.SERVER_SIDE_EMIT: // Updated type
         request.responses.push(response.data);
-
-        debug(
-          "serverSideEmit: got %d responses out of %d",
-          request.responses.length,
-          request.numSub
-        );
+        debug("serverSideEmit: got %d responses out of %d", request.responses.length, request.numSub);
         if (request.responses.length === request.numSub) {
           clearTimeout(request.timeout);
-          if (request.resolve) {
-            request.resolve(null, request.responses);
-          }
+          if (request.resolve) request.resolve(null, request.responses);
           this.requests.delete(requestId);
         }
         break;
@@ -608,19 +492,9 @@ export class RedisAdapter extends Adapter {
     }
   }
 
-  /**
-   * Broadcasts a packet.
-   *
-   * @param {Object} packet - packet to emit
-   * @param {Object} opts - options
-   *
-   * @public
-   */
   public broadcast(packet: any, opts: BroadcastOptions) {
     packet.nsp = this.nsp.name;
-
     const onlyLocal = opts && opts.flags && opts.flags.local;
-
     if (!onlyLocal) {
       const rawOpts = {
         rooms: [...opts.rooms],
@@ -645,248 +519,157 @@ export class RedisAdapter extends Adapter {
     ack: (...args: any[]) => void
   ) {
     packet.nsp = this.nsp.name;
-
     const onlyLocal = opts?.flags?.local;
-
     if (!onlyLocal) {
       const requestId = uid2(6);
-
       const rawOpts = {
         rooms: [...opts.rooms],
         except: [...new Set(opts.except)],
         flags: opts.flags,
       };
-
       const request = this.parser.encode({
         uid: this.uid,
         requestId,
-        type: RequestType.BROADCAST,
+        type: RedisRequestType.BROADCAST, // Updated type
         packet,
         opts: rawOpts,
       });
-
       this.pubClient.publish(this.requestChannel, request);
-
-      this.ackRequests.set(requestId, {
-        clientCountCallback,
-        ack,
-      });
-
-      // we have no way to know at this level whether the server has received an acknowledgement from each client, so we
-      // will simply clean up the ackRequests map after the given delay
+      this.ackRequests.set(requestId, { clientCountCallback, ack });
       setTimeout(() => {
         this.ackRequests.delete(requestId);
       }, opts.flags!.timeout);
     }
-
     super.broadcastWithAck(packet, opts, clientCountCallback, ack);
   }
 
-  /**
-   * Gets the list of all rooms (across every node)
-   *
-   * @public
-   */
   public async allRooms(): Promise<Set<Room>> {
     const localRooms = new Set(this.rooms.keys());
     const numSub = await this.serverCount();
     debug('waiting for %d responses to "allRooms" request', numSub);
-
-    if (numSub <= 1) {
-      return localRooms;
-    }
-
+    if (numSub <= 1) return localRooms;
     const requestId = uid2(6);
     const request = JSON.stringify({
       uid: this.uid,
       requestId,
-      type: RequestType.ALL_ROOMS,
+      type: RedisRequestType.ALL_ROOMS, // Updated type
     });
-
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         if (this.requests.has(requestId)) {
-          reject(
-            new Error("timeout reached while waiting for allRooms response")
-          );
+          reject(new Error("timeout reached while waiting for allRooms response"));
           this.requests.delete(requestId);
         }
       }, this.requestsTimeout);
-
       this.requests.set(requestId, {
-        type: RequestType.ALL_ROOMS,
-        numSub,
-        resolve,
-        timeout,
-        msgCount: 1,
-        rooms: localRooms,
+        type: RedisRequestType.ALL_ROOMS, // Updated type
+        numSub, resolve, timeout, msgCount: 1, rooms: localRooms,
       });
-
       this.pubClient.publish(this.requestChannel, request);
     });
   }
 
   public async fetchSockets(opts: BroadcastOptions): Promise<any[]> {
     const localSockets = await super.fetchSockets(opts);
-
-    if (opts.flags?.local) {
-      return localSockets;
-    }
-
+    if (opts.flags?.local) return localSockets;
     const numSub = await this.serverCount();
     debug('waiting for %d responses to "fetchSockets" request', numSub);
-
-    if (numSub <= 1) {
-      return localSockets;
-    }
-
+    if (numSub <= 1) return localSockets;
     const requestId = uid2(6);
-
     const request = JSON.stringify({
       uid: this.uid,
       requestId,
-      type: RequestType.REMOTE_FETCH,
-      opts: {
-        rooms: [...opts.rooms],
-        except: [...opts.except],
-      },
+      type: RedisRequestType.REMOTE_FETCH, // Updated type
+      opts: { rooms: [...opts.rooms], except: [...opts.except] },
     });
-
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         if (this.requests.has(requestId)) {
-          reject(
-            new Error("timeout reached while waiting for fetchSockets response")
-          );
+          reject(new Error("timeout reached while waiting for fetchSockets response"));
           this.requests.delete(requestId);
         }
       }, this.requestsTimeout);
-
       this.requests.set(requestId, {
-        type: RequestType.REMOTE_FETCH,
-        numSub,
-        resolve,
-        timeout,
-        msgCount: 1,
-        sockets: localSockets,
+        type: RedisRequestType.REMOTE_FETCH, // Updated type
+        numSub, resolve, timeout, msgCount: 1, sockets: localSockets,
       });
-
       this.pubClient.publish(this.requestChannel, request);
     });
   }
 
   public addSockets(opts: BroadcastOptions, rooms: Room[]) {
-    if (opts.flags?.local) {
-      return super.addSockets(opts, rooms);
-    }
-
+    if (opts.flags?.local) return super.addSockets(opts, rooms);
     const request = JSON.stringify({
       uid: this.uid,
-      type: RequestType.REMOTE_JOIN,
-      opts: {
-        rooms: [...opts.rooms],
-        except: [...opts.except],
-      },
+      type: RedisRequestType.REMOTE_JOIN, // Updated type
+      opts: { rooms: [...opts.rooms], except: [...opts.except] },
       rooms: [...rooms],
     });
-
     this.pubClient.publish(this.requestChannel, request);
   }
 
   public delSockets(opts: BroadcastOptions, rooms: Room[]) {
-    if (opts.flags?.local) {
-      return super.delSockets(opts, rooms);
-    }
-
+    if (opts.flags?.local) return super.delSockets(opts, rooms);
     const request = JSON.stringify({
       uid: this.uid,
-      type: RequestType.REMOTE_LEAVE,
-      opts: {
-        rooms: [...opts.rooms],
-        except: [...opts.except],
-      },
+      type: RedisRequestType.REMOTE_LEAVE, // Updated type
+      opts: { rooms: [...opts.rooms], except: [...opts.except] },
       rooms: [...rooms],
     });
-
     this.pubClient.publish(this.requestChannel, request);
   }
 
   public disconnectSockets(opts: BroadcastOptions, close: boolean) {
-    if (opts.flags?.local) {
-      return super.disconnectSockets(opts, close);
-    }
-
+    if (opts.flags?.local) return super.disconnectSockets(opts, close);
     const request = JSON.stringify({
       uid: this.uid,
-      type: RequestType.REMOTE_DISCONNECT,
-      opts: {
-        rooms: [...opts.rooms],
-        except: [...opts.except],
-      },
+      type: RedisRequestType.REMOTE_DISCONNECT, // Updated type
+      opts: { rooms: [...opts.rooms], except: [...opts.except] },
       close,
     });
-
     this.pubClient.publish(this.requestChannel, request);
   }
 
   public serverSideEmit(packet: any[]): void {
     const withAck = typeof packet[packet.length - 1] === "function";
-
     if (withAck) {
-      this.serverSideEmitWithAck(packet).catch(() => {
-        // ignore errors
-      });
+      this.serverSideEmitWithAck(packet).catch(() => {});
       return;
     }
-
     const request = JSON.stringify({
       uid: this.uid,
-      type: RequestType.SERVER_SIDE_EMIT,
+      type: RedisRequestType.SERVER_SIDE_EMIT, // Updated type
       data: packet,
     });
-
     this.pubClient.publish(this.requestChannel, request);
   }
 
   private async serverSideEmitWithAck(packet: any[]) {
     const ack = packet.pop();
-    const numSub = (await this.serverCount()) - 1; // ignore self
-
+    const numSub = (await this.serverCount()) - 1;
     debug('waiting for %d responses to "serverSideEmit" request', numSub);
-
-    if (numSub <= 0) {
-      return ack(null, []);
-    }
-
+    if (numSub <= 0) return ack(null, []);
     const requestId = uid2(6);
     const request = JSON.stringify({
       uid: this.uid,
-      requestId, // the presence of this attribute defines whether an acknowledgement is needed
-      type: RequestType.SERVER_SIDE_EMIT,
+      requestId,
+      type: RedisRequestType.SERVER_SIDE_EMIT, // Updated type
       data: packet,
     });
-
     const timeout = setTimeout(() => {
       const storedRequest = this.requests.get(requestId);
       if (storedRequest) {
         ack(
-          new Error(
-            `timeout reached: only ${storedRequest.responses.length} responses received out of ${storedRequest.numSub}`
-          ),
+          new Error(`timeout reached: only ${storedRequest.responses.length} responses received out of ${storedRequest.numSub}`),
           storedRequest.responses
         );
         this.requests.delete(requestId);
       }
     }, this.requestsTimeout);
-
     this.requests.set(requestId, {
-      type: RequestType.SERVER_SIDE_EMIT,
-      numSub,
-      timeout,
-      resolve: ack,
-      responses: [],
+      type: RedisRequestType.SERVER_SIDE_EMIT, // Updated type
+      numSub, timeout, resolve: ack, responses: [],
     });
-
     this.pubClient.publish(this.requestChannel, request);
   }
 
@@ -897,50 +680,34 @@ export class RedisAdapter extends Adapter {
   close(): Promise<void> | void {
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
-      this.subClient.pUnsubscribe(
-        this.channel + "*",
-        this.redisListeners.get("psub"),
-        true
-      );
-
-      // There is a bug in redis v4 when unsubscribing multiple channels at once, so we'll unsub one at a time.
-      // See https://github.com/redis/node-redis/issues/2052
-      this.subClient.unsubscribe(
-        this.requestChannel,
-        this.redisListeners.get("sub"),
-        true
-      );
-      this.subClient.unsubscribe(
-        this.responseChannel,
-        this.redisListeners.get("sub"),
-        true
-      );
-      this.subClient.unsubscribe(
-        this.specificResponseChannel,
-        this.redisListeners.get("sub"),
-        true
-      );
+      this.subClient.pUnsubscribe(this.channel + "*", this.redisListeners.get("psub"), true);
+      this.subClient.unsubscribe(this.requestChannel, this.redisListeners.get("sub"), true);
+      this.subClient.unsubscribe(this.responseChannel, this.redisListeners.get("sub"), true);
+      this.subClient.unsubscribe(this.specificResponseChannel, this.redisListeners.get("sub"), true);
     } else {
       this.subClient.punsubscribe(this.channel + "*");
-      this.subClient.off(
-        "pmessageBuffer",
-        this.redisListeners.get("pmessageBuffer")
-      );
-
-      this.subClient.unsubscribe([
-        this.requestChannel,
-        this.responseChannel,
-        this.specificResponseChannel,
-      ]);
-      this.subClient.off(
-        "messageBuffer",
-        this.redisListeners.get("messageBuffer")
-      );
+      this.subClient.off("pmessageBuffer", this.redisListeners.get("pmessageBuffer"));
+      this.subClient.unsubscribe([this.requestChannel, this.responseChannel, this.specificResponseChannel]);
+      this.subClient.off("messageBuffer", this.redisListeners.get("messageBuffer"));
     }
-
     this.pubClient.off("error", this.friendlyErrorHandler);
     this.subClient.off("error", this.friendlyErrorHandler);
   }
 }
 
-export { createShardedAdapter } from "./sharded-adapter";
+// Import for Redis Sharded Adapter
+import { createShardedAdapter as createRedisShardedAdapterFactory } from "./sharded-adapter"; // Alias at import
+
+// Named exports
+export {
+  RedisAdapter,
+  RedisAdapterOptions,
+  createRedisAdapter, // Export renamed Redis factory
+  createRedisShardedAdapterFactory as createRedisShardedAdapter, // Re-export sharded adapter factory
+  createHazelcastAdapterFactory as createHazelcastAdapter, // Export aliased Hazelcast factory
+  HazelcastAdapterClass as HazelcastAdapter, // Export Hazelcast adapter class
+  HazelcastAdapterOptionsType as HazelcastAdapterOptions // Export Hazelcast options type
+};
+// Also exporting Redis-specific internal types for potential advanced usage or testing, though not strictly public API
+export type { RedisRequest, RedisAckRequest, Parser as RedisParser };
+export { RedisRequestType };

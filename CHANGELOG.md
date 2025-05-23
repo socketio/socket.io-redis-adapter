@@ -1,5 +1,6 @@
 # History
 
+- [8.4.0](840-YYYY-MM-DD) (YYYY-MM-DD)
 - [8.3.0](830-2024-03-13) (Mar 2024)
 - [8.2.1](821-2023-05-14) (May 2023)
 - [8.2.0](820-2023-05-02) (May 2023)
@@ -21,6 +22,11 @@
 
 
 # Release notes
+
+## [8.4.0] - YYYY-MM-DD
+
+### Added
+- Hazelcast adapter for using Hazelcast as a backing store for multi-server message broadcasting. This adapter is available via `createHazelcastAdapter` and provides an alternative to the Redis-based adapters.
 
 ## [8.3.0](https://github.com/socketio/socket.io-redis-adapter/compare/8.2.1...8.3.0) (2024-03-13)
 

@@ -31,6 +31,7 @@ The `@socket.io/redis-adapter` package allows broadcasting packets between multi
 | Inter-server communication      | `4.1.0`             | :white_check_mark: YES (since version `7.0.0`) |
 | Broadcast with acknowledgements | `4.5.0`             | :white_check_mark: YES (since version `7.2.0`) |
 | Connection state recovery       | `4.6.0`             | :x: NO                                         |
+| Hazelcast Support               | `4.x`               | :white_check_mark: YES (via separate adapter)  |
 
 ## Installation
 
@@ -187,6 +188,38 @@ Minimum requirements:
 - [`redis@4.6.0`](https://github.com/redis/node-redis/commit/3b1bad229674b421b2bc6424155b20d4d3e45bd1)
 
 Note: it is not currently possible to use the sharded adapter with the `ioredis` package and a Redis cluster ([reference](https://github.com/luin/ioredis/issues/1759)).
+
+### Hazelcast Adapter
+
+The `socket.io-hazelcast-adapter` allows broadcasting events to and from a group of Socket.IO servers backed by a [Hazelcast](https://hazelcast.com/) cluster. It is offered as an alternative to the Redis adapter for environments already using or preferring Hazelcast.
+
+#### How to use
+
+```javascript
+import { Server } from "socket.io";
+import { HazelcastClient } from "hazelcast-client";
+// Assuming the final package name will be socket.io-hazelcast-adapter
+// or use the correct local path if testing from source:
+// import { createHazelcastAdapter } from "./lib"; 
+import { createHazelcastAdapter } from "socket.io-hazelcast-adapter";
+
+const io = new Server();
+const hzClient = await HazelcastClient.newHazelcastClient({
+  // Hazelcast client configuration, e.g.:
+  // clusterName: "my-cluster",
+  // network: {
+  //   clusterMembers: ["127.0.0.1:5701"]
+  // }
+});
+
+io.adapter(createHazelcastAdapter(hzClient));
+// ... or with options:
+// io.adapter(createHazelcastAdapter(hzClient, { key: "my-custom-prefix", requestsTimeout: 7000 }));
+
+io.listen(3000);
+```
+
+Note: Cross-server acknowledgements for `broadcastWithAck` have limitations where client ACKs are only routed to the originating server, similar to how other adapters handle this. Full aggregation of client ACKs across multiple servers for a single `broadcastWithAck` call is not supported. Server-to-server ACKs (e.g. for `serverSideEmit` with callback) are supported.
 
 ## Options
 
