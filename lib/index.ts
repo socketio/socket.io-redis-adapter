@@ -479,7 +479,7 @@ export class RedisAdapter extends Adapter {
    */
   private publishResponse(request, response) {
     const responseChannel = this.publishOnSpecificResponseChannel
-      ? `${this.responseChannel}${request.uid}#`
+      ? this.specificResponseChannel
       : this.responseChannel;
     debug("publishing response to channel %s", responseChannel);
     this.pubClient.publish(responseChannel, response);
