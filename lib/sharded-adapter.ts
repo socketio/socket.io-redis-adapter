@@ -72,6 +72,8 @@ class ShardedRedisAdapter extends ClusterAdapter {
   private readonly opts: Required<ShardedRedisAdapterOptions>;
   private readonly channel: string;
   private readonly responseChannel: string;
+  private readonly onCreateRoom: (room: string) => void;
+  private readonly onDeleteRoom: (room: string) => void;
 
   constructor(nsp, pubClient, subClient, opts: ShardedRedisAdapterOptions) {
     super(nsp);
@@ -97,17 +99,20 @@ class ShardedRedisAdapter extends ClusterAdapter {
       this.opts.subscriptionMode === "dynamic" ||
       this.opts.subscriptionMode === "dynamic-private"
     ) {
-      this.on("create-room", (room) => {
+      this.onCreateRoom = (room) => {
         if (this.shouldUseASeparateNamespace(room)) {
           SSUBSCRIBE(this.subClient, this.dynamicChannel(room), handler);
         }
-      });
+      };
 
-      this.on("delete-room", (room) => {
+      this.onDeleteRoom = (room) => {
         if (this.shouldUseASeparateNamespace(room)) {
           SUNSUBSCRIBE(this.subClient, this.dynamicChannel(room));
         }
-      });
+      };
+
+      this.on("create-room", this.onCreateRoom);
+      this.on("delete-room", this.onDeleteRoom);
     }
   }
 
@@ -118,6 +123,14 @@ class ShardedRedisAdapter extends ClusterAdapter {
       this.opts.subscriptionMode === "dynamic" ||
       this.opts.subscriptionMode === "dynamic-private"
     ) {
+      // Remove event listeners to prevent memory leaks
+      if (this.onCreateRoom) {
+        this.off("create-room", this.onCreateRoom);
+      }
+      if (this.onDeleteRoom) {
+        this.off("delete-room", this.onDeleteRoom);
+      }
+
       this.rooms.forEach((_sids, room) => {
         if (this.shouldUseASeparateNamespace(room)) {
           channels.push(this.dynamicChannel(room));
