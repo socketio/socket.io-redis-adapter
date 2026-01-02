@@ -1,3 +1,9 @@
+export function parseTimeout(value: unknown, defaultValue: number): number {
+  return typeof value === "number" && value > 0 && value !== Infinity
+    ? value
+    : defaultValue;
+}
+
 export function hasBinary(obj: any, toJSON?: boolean): boolean {
   if (!obj || typeof obj !== "object") {
     return false;

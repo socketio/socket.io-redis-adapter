@@ -1,7 +1,7 @@
 import uid2 = require("uid2");
 import msgpack = require("notepack.io");
 import { Adapter, BroadcastOptions, Room } from "socket.io-adapter";
-import { PUBSUB } from "./util";
+import { parseTimeout, PUBSUB } from "./util";
 
 const debug = require("debug")("socket.io-redis");
 
@@ -129,12 +129,7 @@ export class RedisAdapter extends Adapter {
     super(nsp);
 
     this.uid = uid2(6);
-    this.requestsTimeout =
-      typeof opts.requestsTimeout === "number" &&
-      opts.requestsTimeout > 0 &&
-      opts.requestsTimeout !== Infinity
-        ? opts.requestsTimeout
-        : 5000;
+    this.requestsTimeout = parseTimeout(opts.requestsTimeout, 5000);
     this.publishOnSpecificResponseChannel =
       !!opts.publishOnSpecificResponseChannel;
     this.parser = opts.parser || msgpack;
@@ -678,12 +673,10 @@ export class RedisAdapter extends Adapter {
 
       // we have no way to know at this level whether the server has received an acknowledgement from each client, so we
       // will simply clean up the ackRequests map after the given delay
-      const ackTimeout =
-        typeof opts.flags?.timeout === "number" &&
-        opts.flags.timeout > 0 &&
-        opts.flags.timeout !== Infinity
-          ? opts.flags.timeout
-          : this.requestsTimeout;
+      const ackTimeout = parseTimeout(
+        opts.flags?.timeout,
+        this.requestsTimeout
+      );
 
       const timeout = setTimeout(() => {
         this.ackRequests.delete(requestId);
