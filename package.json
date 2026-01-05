@@ -1,11 +1,11 @@
 {
-  "name": "@socket.io/redis-adapter",
+  "name": "@taskworld/socket.io-redis-adapter",
   "version": "8.3.1",
   "description": "The Socket.IO Redis adapter, allowing to broadcast events between several Socket.IO servers",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git@github.com:socketio/socket.io-redis-adapter.git"
+    "url": "git@github.com:taskworld/socket.io-redis-adapter.git"
   },
   "files": [
     "dist/"
