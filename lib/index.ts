@@ -1,7 +1,7 @@
 import uid2 = require("uid2");
 import msgpack = require("notepack.io");
 import { Adapter, BroadcastOptions, Room } from "socket.io-adapter";
-import { PUBSUB } from "./util";
+import { parseTimeout, PUBSUB } from "./util";
 
 const debug = require("debug")("socket.io-redis");
 
@@ -36,6 +36,7 @@ interface Request {
 interface AckRequest {
   clientCountCallback: (clientCount: number) => void;
   ack: (...args: any[]) => void;
+  timeout: NodeJS.Timeout;
 }
 
 interface Parser {
@@ -128,7 +129,7 @@ export class RedisAdapter extends Adapter {
     super(nsp);
 
     this.uid = uid2(6);
-    this.requestsTimeout = opts.requestsTimeout || 5000;
+    this.requestsTimeout = parseTimeout(opts.requestsTimeout, 5000);
     this.publishOnSpecificResponseChannel =
       !!opts.publishOnSpecificResponseChannel;
     this.parser = opts.parser || msgpack;
@@ -185,6 +186,7 @@ export class RedisAdapter extends Adapter {
       );
     }
 
+    // Use function() instead of arrow function so 'this' refers to the Redis client (event emitter)
     this.friendlyErrorHandler = function () {
       if (this.listenerCount("error") === 1) {
         console.warn("missing 'error' handler on this Redis client");
@@ -542,9 +544,9 @@ export class RedisAdapter extends Adapter {
         request.msgCount++;
 
         // ignore if response does not contain 'sockets' key
-        if (!response.sockets || !Array.isArray(response.sockets)) return;
-
-        if (request.type === RequestType.SOCKETS) {
+        if (!response.sockets || !Array.isArray(response.sockets)) {
+          debug("ignoring malformed response (missing sockets array)");
+        } else if (request.type === RequestType.SOCKETS) {
           response.sockets.forEach((s) => request.sockets.add(s));
         } else {
           response.sockets.forEach((s) => request.sockets.push(s));
@@ -563,9 +565,11 @@ export class RedisAdapter extends Adapter {
         request.msgCount++;
 
         // ignore if response does not contain 'rooms' key
-        if (!response.rooms || !Array.isArray(response.rooms)) return;
-
-        response.rooms.forEach((s) => request.rooms.add(s));
+        if (!response.rooms || !Array.isArray(response.rooms)) {
+          debug("ignoring malformed response (missing rooms array)");
+        } else {
+          response.rooms.forEach((s) => request.rooms.add(s));
+        }
 
         if (request.msgCount === request.numSub) {
           clearTimeout(request.timeout);
@@ -667,16 +671,22 @@ export class RedisAdapter extends Adapter {
 
       this.pubClient.publish(this.requestChannel, request);
 
+      // we have no way to know at this level whether the server has received an acknowledgement from each client, so we
+      // will simply clean up the ackRequests map after the given delay
+      const ackTimeout = parseTimeout(
+        opts.flags?.timeout,
+        this.requestsTimeout
+      );
+
+      const timeout = setTimeout(() => {
+        this.ackRequests.delete(requestId);
+      }, ackTimeout);
+
       this.ackRequests.set(requestId, {
         clientCountCallback,
         ack,
+        timeout,
       });
-
-      // we have no way to know at this level whether the server has received an acknowledgement from each client, so we
-      // will simply clean up the ackRequests map after the given delay
-      setTimeout(() => {
-        this.ackRequests.delete(requestId);
-      }, opts.flags!.timeout);
     }
 
     super.broadcastWithAck(packet, opts, clientCountCallback, ack);
@@ -895,6 +905,18 @@ export class RedisAdapter extends Adapter {
   }
 
   close(): Promise<void> | void {
+    // Cancel all pending request timeouts and clear the map
+    this.requests.forEach((request) => {
+      clearTimeout(request.timeout);
+    });
+    this.requests.clear();
+
+    // Cancel all pending ack request timeouts and clear the map
+    this.ackRequests.forEach((ackRequest) => {
+      clearTimeout(ackRequest.timeout);
+    });
+    this.ackRequests.clear();
+
     const isRedisV4 = typeof this.pubClient.pSubscribe === "function";
     if (isRedisV4) {
       this.subClient.pUnsubscribe(
@@ -940,6 +962,9 @@ export class RedisAdapter extends Adapter {
 
     this.pubClient.off("error", this.friendlyErrorHandler);
     this.subClient.off("error", this.friendlyErrorHandler);
+
+    // Clear listener references
+    this.redisListeners.clear();
   }
 }
 
