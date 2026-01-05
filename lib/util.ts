@@ -1,3 +1,9 @@
+export function parseTimeout(value: unknown, defaultValue: number): number {
+  return typeof value === "number" && value > 0 && value !== Infinity
+    ? value
+    : defaultValue;
+}
+
 export function hasBinary(obj: any, toJSON?: boolean): boolean {
   if (!obj || typeof obj !== "object") {
     return false;
@@ -53,39 +59,74 @@ function isRedisV4Client(redisClient: any) {
 }
 
 const kHandlers = Symbol("handlers");
+const kListener = Symbol("listener");
+const kPendingUnsubscribes = Symbol("pendingUnsubscribes");
 
 export function SSUBSCRIBE(
   redisClient: any,
   channel: string,
   handler: (rawMessage: Buffer, channel: Buffer) => void
-) {
+): Promise<void> {
   if (isRedisV4Client(redisClient)) {
-    redisClient.sSubscribe(channel, handler, RETURN_BUFFERS);
+    return redisClient.sSubscribe(channel, handler, RETURN_BUFFERS);
   } else {
-    if (!redisClient[kHandlers]) {
-      redisClient[kHandlers] = new Map();
-      redisClient.on("smessageBuffer", (rawChannel, message) => {
-        redisClient[kHandlers].get(rawChannel.toString())?.(
-          message,
-          rawChannel
-        );
-      });
+    const doSubscribe = (): Promise<void> => {
+      if (!redisClient[kHandlers]) {
+        redisClient[kHandlers] = new Map<string, typeof handler>();
+        redisClient[kPendingUnsubscribes] = new Map<string, Promise<void>>();
+        redisClient[kListener] = (rawChannel: Buffer, message: Buffer) => {
+          redisClient[kHandlers].get(rawChannel.toString())?.(
+            message,
+            rawChannel
+          );
+        };
+        redisClient.on("smessageBuffer", redisClient[kListener]);
+      }
+      redisClient[kHandlers].set(channel, handler);
+      return redisClient.ssubscribe(channel);
+    };
+
+    // Wait for any pending unsubscribe on this channel to complete first
+    const pendingUnsubscribe = redisClient[kPendingUnsubscribes]?.get(channel);
+    if (pendingUnsubscribe) {
+      return pendingUnsubscribe.then(doSubscribe);
     }
-    redisClient[kHandlers].set(channel, handler);
-    redisClient.ssubscribe(channel);
+    return doSubscribe();
   }
 }
 
-export function SUNSUBSCRIBE(redisClient: any, channel: string | string[]) {
+export function SUNSUBSCRIBE(
+  redisClient: any,
+  channel: string | string[]
+): Promise<void> {
   if (isRedisV4Client(redisClient)) {
-    redisClient.sUnsubscribe(channel);
+    return redisClient.sUnsubscribe(channel);
   } else {
-    redisClient.sunsubscribe(channel);
-    if (Array.isArray(channel)) {
-      channel.forEach((c) => redisClient[kHandlers].delete(c));
-    } else {
-      redisClient[kHandlers].delete(channel);
-    }
+    const channels = Array.isArray(channel) ? channel : [channel];
+
+    // Remove handlers immediately to stop processing messages
+    channels.forEach((c) => redisClient[kHandlers]?.delete(c));
+
+    // Perform the unsubscribe and track as pending
+    const unsubscribePromise = redisClient.sunsubscribe(channel).then(() => {
+      // Remove from pending tracking
+      channels.forEach((c) => redisClient[kPendingUnsubscribes]?.delete(c));
+
+      // Clean up the global listener when no more handlers exist
+      if (redisClient[kHandlers]?.size === 0 && redisClient[kListener]) {
+        redisClient.off("smessageBuffer", redisClient[kListener]);
+        delete redisClient[kHandlers];
+        delete redisClient[kListener];
+        delete redisClient[kPendingUnsubscribes];
+      }
+    });
+
+    // Track pending unsubscribe for each channel
+    channels.forEach((c) =>
+      redisClient[kPendingUnsubscribes]?.set(c, unsubscribePromise)
+    );
+
+    return unsubscribePromise;
   }
 }
 
