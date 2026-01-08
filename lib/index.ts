@@ -150,11 +150,16 @@ export class RedisAdapter extends Adapter {
         this.onrequest(channel, msg);
       });
 
-      this.subClient.pSubscribe(
-        this.channel + "*",
-        this.redisListeners.get("psub"),
-        true
-      );
+      this.withRetry(() =>
+        this.subClient.pSubscribe(
+          this.channel + "*",
+          this.redisListeners.get("psub"),
+          true
+        )
+      ).catch((err) => {
+        this.emit("error", err);
+      });
+
       this.subClient.subscribe(
         [
           this.requestChannel,
@@ -168,7 +173,12 @@ export class RedisAdapter extends Adapter {
       this.redisListeners.set("pmessageBuffer", this.onmessage.bind(this));
       this.redisListeners.set("messageBuffer", this.onrequest.bind(this));
 
-      this.subClient.psubscribe(this.channel + "*");
+      this.withRetry(() => this.subClient.psubscribe(this.channel + "*")).catch(
+        (err) => {
+          this.emit("error", err);
+        }
+      );
+
       this.subClient.on(
         "pmessageBuffer",
         this.redisListeners.get("pmessageBuffer")
@@ -940,6 +950,21 @@ export class RedisAdapter extends Adapter {
 
     this.pubClient.off("error", this.friendlyErrorHandler);
     this.subClient.off("error", this.friendlyErrorHandler);
+  }
+
+  private async withRetry(fn: () => Promise<any>) {
+    let attempt = 1;
+    while (true) {
+      try {
+        return await fn();
+      } catch (err) {
+        if (attempt >= 3) {
+          throw err;
+        }
+        await new Promise((resolve) => setTimeout(resolve, attempt * 100));
+        attempt++;
+      }
+    }
   }
 }
 
