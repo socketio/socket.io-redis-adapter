@@ -259,11 +259,12 @@ describe("@socket.io/redis-adapter", () => {
       true
     ));
 
-  // FIXME see https://github.com/luin/ioredis/issues/1759
-  describe.skip("[sharded] ioredis cluster", () =>
+  describe("[sharded] ioredis cluster", () =>
     testSuite(
       async () => {
-        const pubClient = new Cluster(clusterNodes);
+        const pubClient = new Cluster(clusterNodes, {
+          shardedSubscribers: true,
+        });
         const subClient = pubClient.duplicate();
 
         return [
