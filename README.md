@@ -18,6 +18,7 @@ The `@socket.io/redis-adapter` package allows broadcasting packets between multi
   - [With the `ioredis` package](#with-the-ioredis-package)
   - [With the `ioredis` package and a Redis cluster](#with-the-ioredis-package-and-a-redis-cluster)
   - [With Redis sharded Pub/Sub](#with-redis-sharded-pubsub)
+    - [With the `ioredis` package and a Redis cluster](#with-the-ioredis-package-and-a-redis-cluster-1)
 - [Options](#options)
   - [Default adapter](#default-adapter)
   - [Sharded adapter](#sharded-adapter)
@@ -186,7 +187,44 @@ Minimum requirements:
 - Redis 7.0
 - [`redis@4.6.0`](https://github.com/redis/node-redis/commit/3b1bad229674b421b2bc6424155b20d4d3e45bd1)
 
-Note: it is not currently possible to use the sharded adapter with the `ioredis` package and a Redis cluster ([reference](https://github.com/luin/ioredis/issues/1759)).
+#### With the `ioredis` package and a Redis cluster
+
+Starting with `ioredis@5.9.0`, you can use the sharded adapter with an ioredis Cluster by enabling the `shardedSubscribers` option:
+
+```js
+import { Cluster } from "ioredis";
+import { Server } from "socket.io";
+import { createShardedAdapter } from "@socket.io/redis-adapter";
+
+const pubClient = new Cluster(
+  [
+    {
+      host: "localhost",
+      port: 7000,
+    },
+    {
+      host: "localhost",
+      port: 7001,
+    },
+    {
+      host: "localhost",
+      port: 7002,
+    },
+  ],
+  {
+    shardedSubscribers: true,
+  }
+);
+const subClient = pubClient.duplicate();
+
+const io = new Server({
+  adapter: createShardedAdapter(pubClient, subClient)
+});
+
+io.listen(3000);
+```
+
+Reference: https://github.com/redis/ioredis/pull/1956
 
 ## Options
 

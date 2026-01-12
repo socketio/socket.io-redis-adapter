@@ -38,6 +38,16 @@ const clusterNodes = [
   },
 ];
 
+// NAT mapping for ioredis Cluster (Docker container returns internal IP)
+const ioredisNatMap = {
+  "172.20.0.3:7000": { host: "localhost", port: 7000 },
+  "172.20.0.3:7001": { host: "localhost", port: 7001 },
+  "172.20.0.3:7002": { host: "localhost", port: 7002 },
+  "172.20.0.3:7003": { host: "localhost", port: 7003 },
+  "172.20.0.3:7004": { host: "localhost", port: 7004 },
+  "172.20.0.3:7005": { host: "localhost", port: 7005 },
+};
+
 function testSuite(
   createAdapter: any,
   redisPackage: string = "redis@4",
@@ -139,7 +149,9 @@ describe("@socket.io/redis-adapter", () => {
 
   describe("ioredis cluster", () =>
     testSuite(async () => {
-      const pubClient = new Cluster(clusterNodes);
+      const pubClient = new Cluster(clusterNodes, {
+        natMap: ioredisNatMap,
+      });
       const subClient = pubClient.duplicate();
 
       return [
@@ -259,11 +271,14 @@ describe("@socket.io/redis-adapter", () => {
       true
     ));
 
-  // FIXME see https://github.com/luin/ioredis/issues/1759
-  describe.skip("[sharded] ioredis cluster", () =>
+  // Fixed in ioredis 5.9.0, see https://github.com/redis/ioredis/pull/1956
+  describe("[sharded] ioredis cluster", () =>
     testSuite(
       async () => {
-        const pubClient = new Cluster(clusterNodes);
+        const pubClient = new Cluster(clusterNodes, {
+          shardedSubscribers: true,
+          natMap: ioredisNatMap,
+        });
         const subClient = pubClient.duplicate();
 
         return [

@@ -52,6 +52,29 @@ function isRedisV4Client(redisClient: any) {
   return typeof redisClient.sSubscribe === "function";
 }
 
+/**
+ * Whether the client is an ioredis Cluster instance
+ *
+ * @param redisClient
+ */
+export function isIoRedisCluster(redisClient: any) {
+  return redisClient.constructor.name === "Cluster" || redisClient.isCluster;
+}
+
+/**
+ * Whether the ioredis Cluster has shardedSubscribers enabled
+ *
+ * @param redisClient
+ *
+ * @see https://github.com/redis/ioredis/pull/1956
+ */
+export function hasShardedSubscribers(redisClient: any) {
+  return (
+    isIoRedisCluster(redisClient) &&
+    redisClient.options?.shardedSubscribers === true
+  );
+}
+
 const kHandlers = Symbol("handlers");
 
 export function SSUBSCRIBE(

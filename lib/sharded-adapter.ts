@@ -6,7 +6,15 @@ import {
   Offset,
 } from "socket.io-adapter";
 import { decode, encode } from "notepack.io";
-import { hasBinary, PUBSUB, SPUBLISH, SSUBSCRIBE, SUNSUBSCRIBE } from "./util";
+import {
+  hasBinary,
+  hasShardedSubscribers,
+  isIoRedisCluster,
+  PUBSUB,
+  SPUBLISH,
+  SSUBSCRIBE,
+  SUNSUBSCRIBE,
+} from "./util";
 import debugModule from "debug";
 
 const debug = debugModule("socket.io-redis");
@@ -84,6 +92,15 @@ class ShardedRedisAdapter extends ClusterAdapter {
       },
       opts
     );
+
+    // Validate ioredis Cluster configuration
+    if (isIoRedisCluster(subClient) && !hasShardedSubscribers(subClient)) {
+      throw new Error(
+        "When using the sharded adapter with an ioredis Cluster, " +
+          "you must enable the 'shardedSubscribers' option. " +
+          "See https://github.com/redis/ioredis/pull/1956"
+      );
+    }
 
     this.channel = `${this.opts.channelPrefix}#${nsp.name}#`;
     this.responseChannel = `${this.opts.channelPrefix}#${nsp.name}#${this.uid}#`;
