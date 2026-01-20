@@ -40,7 +40,7 @@ const clusterNodes = [
 
 function testSuite(
   createAdapter: any,
-  redisPackage: string = "redis@4",
+  redisPackage: string = "redis@5",
   sharded = false
 ) {
   commonTestSuite(createAdapter);
@@ -48,7 +48,7 @@ function testSuite(
 }
 
 describe("@socket.io/redis-adapter", () => {
-  describe("redis@4 standalone", () =>
+  describe("redis@5 standalone", () =>
     testSuite(async () => {
       const pubClient = createClient();
       const subClient = pubClient.duplicate();
@@ -66,7 +66,7 @@ describe("@socket.io/redis-adapter", () => {
       ];
     }));
 
-  describe("redis@4 standalone (specific response channel)", () =>
+  describe("redis@5 standalone (specific response channel)", () =>
     testSuite(async () => {
       const pubClient = createClient();
       const subClient = pubClient.duplicate();
@@ -85,7 +85,7 @@ describe("@socket.io/redis-adapter", () => {
       ];
     }));
 
-  describe("redis@4 cluster", () =>
+  describe("redis@5 cluster", () =>
     testSuite(async () => {
       const pubClient = createCluster({
         rootNodes: clusterNodes,
@@ -153,7 +153,7 @@ describe("@socket.io/redis-adapter", () => {
       ];
     }, "ioredis"));
 
-  describe("[sharded] redis@4 standalone (dynamic subscription mode)", () =>
+  describe("[sharded] redis@5 standalone (dynamic subscription mode)", () =>
     testSuite(
       async () => {
         const pubClient = createClient();
@@ -171,11 +171,11 @@ describe("@socket.io/redis-adapter", () => {
           },
         ];
       },
-      "redis@4",
+      "redis@5",
       true
     ));
 
-  describe("[sharded] redis@4 standalone (dynamic subscription mode & dynamic private channels)", () =>
+  describe("[sharded] redis@5 standalone (dynamic subscription mode & dynamic private channels)", () =>
     testSuite(
       async () => {
         const pubClient = createClient();
@@ -193,11 +193,11 @@ describe("@socket.io/redis-adapter", () => {
           },
         ];
       },
-      "redis@4",
+      "redis@5",
       true
     ));
 
-  describe("[sharded] redis@4 standalone (static subscription mode)", () =>
+  describe("[sharded] redis@5 standalone (static subscription mode)", () =>
     testSuite(
       async () => {
         const pubClient = createClient();
@@ -215,11 +215,11 @@ describe("@socket.io/redis-adapter", () => {
           },
         ];
       },
-      "redis@4",
+      "redis@5",
       true
     ));
 
-  describe("[sharded] redis@4 cluster", () =>
+  describe("[sharded] redis@5 cluster", () =>
     testSuite(
       async () => {
         const pubClient = createCluster({
@@ -237,7 +237,7 @@ describe("@socket.io/redis-adapter", () => {
           },
         ];
       },
-      "redis@4",
+      "redis@5",
       true
     ));
 

@@ -16,8 +16,8 @@ jobs:
     strategy:
       matrix:
         node-version:
-          - 14
           - 20
+          - 24
 
     services:
       redis:

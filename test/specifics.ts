@@ -124,8 +124,8 @@ export function testSuite(
       });
     });
 
-    if (redisPackage === "redis@4") {
-      // redis@4
+    if (redisPackage === "redis@5") {
+      // redis@5
       it("ignores messages from unknown channels", (done) => {
         (servers[0].of("/").adapter as RedisAdapter).subClient
           .PSUBSCRIBE("f?o", () => {
