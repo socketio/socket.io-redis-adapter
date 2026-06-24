@@ -412,8 +412,11 @@ export class RedisAdapter extends Adapter {
           }
           called = true;
           debug("calling acknowledgement with %j", arg);
+          const responseChannel = this.publishOnSpecificResponseChannel
+            ? `${this.responseChannel}${request.uid}#`
+            : this.responseChannel;
           this.pubClient.publish(
-            this.responseChannel,
+            responseChannel,
             JSON.stringify({
               type: RequestType.SERVER_SIDE_EMIT,
               requestId: request.requestId,
