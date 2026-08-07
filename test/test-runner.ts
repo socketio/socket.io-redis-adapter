@@ -280,4 +280,5 @@ describe("@socket.io/redis-adapter", () => {
     ));
 
   import("./custom-parser");
+  import("./hasBinary");
 });
