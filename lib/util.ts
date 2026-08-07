@@ -16,14 +16,16 @@ export function hasBinary(obj: any, toJSON?: boolean): boolean {
     return false;
   }
 
+  // check toJSON() before the own keys: Mongoose documents and the like hold
+  // circular internals (e.g. `$__`) that would otherwise overflow the stack. See #572
+  if (obj.toJSON && typeof obj.toJSON === "function" && !toJSON) {
+    return hasBinary(obj.toJSON(), true);
+  }
+
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key) && hasBinary(obj[key])) {
       return true;
     }
-  }
-
-  if (obj.toJSON && typeof obj.toJSON === "function" && !toJSON) {
-    return hasBinary(obj.toJSON(), true);
   }
 
   return false;
