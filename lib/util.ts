@@ -52,6 +52,17 @@ function isRedisV4Client(redisClient: any) {
   return typeof redisClient.sSubscribe === "function";
 }
 
+/**
+ * Whether the client was created with `createSentinel()` from the `redis`
+ * package.
+ *
+ * Unlike a regular node-redis client, its `sendCommand()` method expects an
+ * `isReadonly` argument before the command arguments.
+ */
+function isRedisSentinelClient(redisClient: any) {
+  return typeof redisClient.getMasterNode === "function";
+}
+
 const kHandlers = Symbol("handlers");
 
 export function SSUBSCRIBE(
@@ -114,6 +125,10 @@ export function PUBSUB(redisClient: any, arg: string, channel: string) {
           .then(parseNumSubResponse);
       })
     ).then(sumValues);
+  } else if (isRedisSentinelClient(redisClient)) {
+    return redisClient
+      .sendCommand(true, ["PUBSUB", arg, channel])
+      .then(parseNumSubResponse);
   } else if (isRedisV4Client(redisClient)) {
     const isCluster = Array.isArray(redisClient.masters);
     if (isCluster) {

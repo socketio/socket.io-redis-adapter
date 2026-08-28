@@ -4,6 +4,7 @@ import { createAdapter, createShardedAdapter } from "../lib";
 import { createClient, createCluster } from "redis";
 import { Redis, Cluster } from "ioredis";
 import { createClient as createClientV3 } from "redis-v3";
+import "./util-spec";
 
 const clusterNodes = [
   {
