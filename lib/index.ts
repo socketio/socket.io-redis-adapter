@@ -303,7 +303,16 @@ export class RedisAdapter extends Adapter {
             rooms: new Set<Room>(request.opts.rooms),
             except: new Set<Room>(request.opts.except),
           };
-          return super.addSockets(opts, request.rooms);
+          super.addSockets(opts, request.rooms);
+
+          if (request.requestId) {
+            response = JSON.stringify({
+              requestId: request.requestId,
+            });
+
+            this.publishResponse(request, response);
+          }
+          return;
         }
 
         socket = this.nsp.sockets.get(request.sid);
@@ -326,7 +335,16 @@ export class RedisAdapter extends Adapter {
             rooms: new Set<Room>(request.opts.rooms),
             except: new Set<Room>(request.opts.except),
           };
-          return super.delSockets(opts, request.rooms);
+          super.delSockets(opts, request.rooms);
+
+          if (request.requestId) {
+            response = JSON.stringify({
+              requestId: request.requestId,
+            });
+
+            this.publishResponse(request, response);
+          }
+          return;
         }
 
         socket = this.nsp.sockets.get(request.sid);
@@ -349,7 +367,16 @@ export class RedisAdapter extends Adapter {
             rooms: new Set<Room>(request.opts.rooms),
             except: new Set<Room>(request.opts.except),
           };
-          return super.disconnectSockets(opts, request.close);
+          super.disconnectSockets(opts, request.close);
+
+          if (request.requestId) {
+            response = JSON.stringify({
+              requestId: request.requestId,
+            });
+
+            this.publishResponse(request, response);
+          }
+          return;
         }
 
         socket = this.nsp.sockets.get(request.sid);
@@ -579,11 +606,15 @@ export class RedisAdapter extends Adapter {
       case RequestType.REMOTE_JOIN:
       case RequestType.REMOTE_LEAVE:
       case RequestType.REMOTE_DISCONNECT:
-        clearTimeout(request.timeout);
-        if (request.resolve) {
-          request.resolve();
+        request.msgCount++;
+
+        if (request.msgCount === request.numSub) {
+          clearTimeout(request.timeout);
+          if (request.resolve) {
+            request.resolve();
+          }
+          this.requests.delete(requestId);
         }
-        this.requests.delete(requestId);
         break;
 
       case RequestType.SERVER_SIDE_EMIT:
@@ -775,13 +806,25 @@ export class RedisAdapter extends Adapter {
     });
   }
 
-  public addSockets(opts: BroadcastOptions, rooms: Room[]) {
+  public async addSockets(opts: BroadcastOptions, rooms: Room[]) {
+    super.addSockets(opts, rooms);
+
     if (opts.flags?.local) {
-      return super.addSockets(opts, rooms);
+      return;
     }
+
+    const numSub = await this.serverCount();
+    debug('waiting for %d responses to "addSockets" request', numSub);
+
+    if (numSub <= 1) {
+      return;
+    }
+
+    const requestId = uid2(6);
 
     const request = JSON.stringify({
       uid: this.uid,
+      requestId,
       type: RequestType.REMOTE_JOIN,
       opts: {
         rooms: [...opts.rooms],
@@ -790,16 +833,47 @@ export class RedisAdapter extends Adapter {
       rooms: [...rooms],
     });
 
-    this.pubClient.publish(this.requestChannel, request);
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (this.requests.has(requestId)) {
+          reject(
+            new Error("timeout reached while waiting for addSockets response")
+          );
+          this.requests.delete(requestId);
+        }
+      }, this.requestsTimeout);
+
+      this.requests.set(requestId, {
+        type: RequestType.REMOTE_JOIN,
+        numSub,
+        resolve,
+        timeout,
+        msgCount: 1,
+      });
+
+      this.pubClient.publish(this.requestChannel, request);
+    });
   }
 
-  public delSockets(opts: BroadcastOptions, rooms: Room[]) {
+  public async delSockets(opts: BroadcastOptions, rooms: Room[]) {
+    super.delSockets(opts, rooms);
+
     if (opts.flags?.local) {
-      return super.delSockets(opts, rooms);
+      return;
     }
+
+    const numSub = await this.serverCount();
+    debug('waiting for %d responses to "delSockets" request', numSub);
+
+    if (numSub <= 1) {
+      return;
+    }
+
+    const requestId = uid2(6);
 
     const request = JSON.stringify({
       uid: this.uid,
+      requestId,
       type: RequestType.REMOTE_LEAVE,
       opts: {
         rooms: [...opts.rooms],
@@ -808,16 +882,47 @@ export class RedisAdapter extends Adapter {
       rooms: [...rooms],
     });
 
-    this.pubClient.publish(this.requestChannel, request);
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (this.requests.has(requestId)) {
+          reject(
+            new Error("timeout reached while waiting for delSockets response")
+          );
+          this.requests.delete(requestId);
+        }
+      }, this.requestsTimeout);
+
+      this.requests.set(requestId, {
+        type: RequestType.REMOTE_LEAVE,
+        numSub,
+        resolve,
+        timeout,
+        msgCount: 1,
+      });
+
+      this.pubClient.publish(this.requestChannel, request);
+    });
   }
 
-  public disconnectSockets(opts: BroadcastOptions, close: boolean) {
+  public async disconnectSockets(opts: BroadcastOptions, close: boolean) {
+    super.disconnectSockets(opts, close);
+
     if (opts.flags?.local) {
-      return super.disconnectSockets(opts, close);
+      return;
     }
+
+    const numSub = await this.serverCount();
+    debug('waiting for %d responses to "disconnectSockets" request', numSub);
+
+    if (numSub <= 1) {
+      return;
+    }
+
+    const requestId = uid2(6);
 
     const request = JSON.stringify({
       uid: this.uid,
+      requestId,
       type: RequestType.REMOTE_DISCONNECT,
       opts: {
         rooms: [...opts.rooms],
@@ -826,7 +931,28 @@ export class RedisAdapter extends Adapter {
       close,
     });
 
-    this.pubClient.publish(this.requestChannel, request);
+    return new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        if (this.requests.has(requestId)) {
+          reject(
+            new Error(
+              "timeout reached while waiting for disconnectSockets response"
+            )
+          );
+          this.requests.delete(requestId);
+        }
+      }, this.requestsTimeout);
+
+      this.requests.set(requestId, {
+        type: RequestType.REMOTE_DISCONNECT,
+        numSub,
+        resolve,
+        timeout,
+        msgCount: 1,
+      });
+
+      this.pubClient.publish(this.requestChannel, request);
+    });
   }
 
   public serverSideEmit(packet: any[]): void {
